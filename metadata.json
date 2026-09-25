@@ -1,0 +1,6 @@
+{
+  "name": "NOVA Phase 3 - Gemini Intelligence Layer",
+  "description": "Natural-language spatial intelligence layer for NOVA translating conversational spatial instructions into deterministic structured commands.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

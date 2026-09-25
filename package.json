@@ -1,0 +1,51 @@
+{
+  "name": "nova",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "dev:frontend-only": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "tsx src/systems/command/verifyBuiltinCommands.ts && tsx src/vision/verifyVision.ts && tsx src/systems/context/verifyContext.ts && tsx src/systems/memory/verifyMemory.ts && tsx src/systems/voice/verifyVoice.ts && tsx src/systems/multimodal/verifyMultimodal.ts && tsx src/systems/native/verifyNative.ts && tsx src/systems/native/verifyNativeAction.ts && tsx src/systems/native/verifyApplicationCatalog.ts && tsx src/systems/multimodal/verifyGestureIntent.ts && tsx src/systems/native/verifyNativeSpatialSync.ts",
+    "preview": "vite preview",
+    "test:builtins": "tsx src/systems/command/verifyBuiltinCommands.ts",
+    "test:vision": "tsx src/vision/verifyVision.ts",
+    "test:context": "tsx src/systems/context/verifyContext.ts",
+    "test:memory": "tsx src/systems/memory/verifyMemory.ts",
+    "test:voice": "tsx src/systems/voice/verifyVoice.ts",
+    "test:multimodal": "tsx src/systems/multimodal/verifyMultimodal.ts",
+    "test:native": "tsx src/systems/native/verifyNative.ts",
+    "test:native-action": "tsx src/systems/native/verifyNativeAction.ts",
+    "test:catalog": "tsx src/systems/native/verifyApplicationCatalog.ts",
+    "test:gesture": "tsx src/systems/multimodal/verifyGestureIntent.ts",
+    "test:sync": "tsx src/systems/native/verifyNativeSpatialSync.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.23.0",
+    "@mediapipe/tasks-vision": "^0.10.17",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "framer-motion": "^13.4.0",
+    "lucide-react": "^1.47.0",
+    "motion": "^13.4.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "three": "^0.186.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0",
+    "tsx": "^4.23.13",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}

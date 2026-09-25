@@ -1,0 +1,2365 @@
+/* ==========================================================================
+   NOVA — spatial shell
+   Colour, type and surface rules for the whole system live here. The 3D
+   environment is drawn by WebGL; every readable surface in it is real DOM
+   styled by this file.
+   ========================================================================== */
+
+:root {
+  --environment: #f4f4f1;
+  --surface: #ffffff;
+  --surface-secondary: #ecedea;
+  --text: #17181a;
+  --text-secondary: #6b6d70;
+  --text-tertiary: #9a9c9f;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-faint: rgba(0, 0, 0, 0.05);
+  --accent: #5b5ce2;
+
+  /* System interface is glass over the environment rather than panels in it:
+     one translucent white, one blur radius, used everywhere so the instruments
+     read as a single layer at a single depth. */
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-strong: rgba(255, 255, 255, 0.92);
+
+  /* Status only. These never appear in the environment and never decorate —
+     a colour here always means a device is in a state worth knowing about. */
+  --signal-ok: #2c966e;
+  --signal-warn: #c68b17;
+  --signal-bad: #b8523c;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
+    'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Fira Code', Menlo, monospace;
+
+  --ease-spatial: cubic-bezier(0.22, 0.9, 0.24, 1);
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--environment);
+  color: var(--text);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Layout shell
+   -------------------------------------------------------------------------- */
+
+.nova-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* The environment. The native cursor is replaced by the spatial one. */
+.nova-stage {
+  position: absolute;
+  inset: 0;
+  cursor: none;
+  touch-action: none;
+}
+
+.nova-stage canvas {
+  display: block;
+  outline: none;
+}
+
+/* System interface floats above the environment and only claims the pixels it uses. */
+.nova-interface {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.nova-interface > * {
+  pointer-events: none;
+}
+
+.nova-interface button,
+.nova-interface input,
+.nova-interface .rail,
+.nova-interface .command {
+  pointer-events: auto;
+  cursor: default;
+}
+
+.nova-interface .command-anchor,
+.nova-interface .notice-anchor {
+  pointer-events: none;
+}
+
+.nova-interface input {
+  cursor: text;
+}
+
+/* --------------------------------------------------------------------------
+   Spatial window surfaces  (rendered inside the 3D scene)
+   -------------------------------------------------------------------------- */
+
+.nova-surface {
+  --opacity: 1;
+  --collapse: 0;
+  --focus: 0;
+  --scrim: 0;
+  --soften: 0;
+
+  position: absolute;
+  opacity: var(--opacity);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nova-surface__full,
+.nova-surface__collapsed {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.nova-surface__full {
+  display: flex;
+  flex-direction: column;
+  /* The two faces cross over rather than dissolve through each other: the full
+     surface is gone before the collapsed plate arrives. */
+  opacity: clamp(0, 1 - var(--collapse) * 1.8, 1);
+  filter: blur(calc(var(--soften) * 1px));
+  /* Three distances of shadow rather than two. A contact shadow that stays put,
+     a mid shadow that grows a little with focus, and a long one that carries
+     most of the lift — which is what makes a focused surface read as nearer
+     rather than merely brighter. */
+  box-shadow:
+    0 2px 5px rgba(20, 22, 26, 0.05),
+    0 calc(10px + var(--focus) * 10px) calc(24px + var(--focus) * 16px)
+      rgba(20, 22, 26, calc(0.07 + var(--focus) * 0.035)),
+    0 calc(30px + var(--focus) * 34px) calc(64px + var(--focus) * 56px)
+      rgba(20, 22, 26, calc(0.1 + var(--focus) * 0.07));
+}
+
+/* The accent belongs to focus and to nothing else. Held far below a glow — a
+   surface that is being worked in should look attended to, not lit up. */
+.nova-surface__full::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: var(--focus);
+  box-shadow: 0 26px 70px rgba(91, 92, 226, 0.13);
+  pointer-events: none;
+}
+
+/* A hairline that tightens to the accent as a surface takes focus, plus the
+   single specular highlight along the top edge that makes a flat rectangle
+   read as a physical panel catching the room light. */
+.nova-surface__full::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* The hairline itself becomes the accent as focus rises — an edge that is
+     drawn in a different colour, not an edge with a light behind it. */
+  border: 1px solid color-mix(in srgb, var(--accent) calc(var(--focus) * 62%), var(--border));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Hovering marks a surface without ever outranking focus: the accent mixes in
+   from below, so a focused window under the pointer stays the stronger of the two. */
+.nova-surface[data-hovered='1'] .nova-surface__full::before {
+  border-color: color-mix(
+    in srgb,
+    var(--accent) calc(26% + var(--focus) * 44%),
+    var(--border)
+  );
+}
+
+/* Armed: a confident hand is resting on this surface, and a double pinch would
+   select it. One step above hover — a firmer hairline, a thin outer ring and a
+   trace of the focus glow — and still never above focus itself. Mouse hover
+   never sets this. */
+.nova-surface[data-armed='1'] .nova-surface__full::before {
+  border-color: color-mix(
+    in srgb,
+    var(--accent) calc(46% + var(--focus) * 24%),
+    var(--border)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.nova-surface[data-armed='1'] .nova-surface__full::after {
+  opacity: max(var(--focus), 0.35);
+}
+
+.nova-surface__collapsed {
+  opacity: clamp(0, (var(--collapse) - 0.45) * 1.82, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(20, 22, 26, 0.12);
+}
+
+.collapsed__mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 18%, transparent);
+}
+
+.collapsed__label {
+  font-size: 52px;
+  font-weight: 560;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+/* Depth haze. Sits above the content so distance quietly removes contrast. */
+.nova-surface__scrim {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: var(--environment);
+  opacity: var(--scrim);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* NOVA Focus Pulse — the moment focus lands, not the state of being focused.
+   A sibling of the surface faces rather than a child, because `__full` clips its
+   overflow and the ring's whole point is that it leaves the edge. One shot: the
+   element is rebuilt on each focus change and there is no iteration count, so
+   nothing here loops and nothing runs per frame. */
+.nova-surface__pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  border: 1px solid var(--accent);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 5;
+  animation: nova-focus-pulse 620ms var(--ease-spatial) forwards;
+}
+
+@keyframes nova-focus-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.42;
+  }
+  100% {
+    transform: scale(1.035);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nova-surface__pulse {
+    animation: none;
+  }
+}
+
+/* --- window chrome ------------------------------------------------------ */
+
+.chrome {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 18px;
+  flex: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) calc(var(--focus) * 26%), var(--border-faint));
+  background: linear-gradient(180deg, #fdfdfc 0%, #f7f7f5 100%);
+}
+
+/* The title block firms up with focus rather than lighting up: at rest the
+   chrome is a label, and in use it is a heading. */
+.chrome__title {
+  opacity: calc(0.62 + var(--focus) * 0.38);
+}
+
+/* The application's glyph, in a wash of its own tint. Small, and the only
+   colour the chrome carries. */
+.chrome__mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 11%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 16%, transparent);
+}
+
+.chrome__app {
+  font-size: 15px;
+  font-weight: 560;
+  letter-spacing: -0.012em;
+  /* Quieter until the surface is the one being worked in. The title block is
+     how a focused window announces itself at a glance. */
+  color: color-mix(in srgb, var(--text) calc(58% + var(--focus) * 42%), transparent);
+  flex: none;
+}
+
+.chrome__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  letter-spacing: -0.008em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 12%;
+}
+
+/* Control positions are percentages of the surface width so they coincide with
+   the regions the interaction system hit-tests in 3D. */
+.chrome__control {
+  position: absolute;
+  top: 50%;
+  width: 2.3%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(23, 24, 26, 0.14);
+  transform: translateY(-50%);
+  transition:
+    background 160ms var(--ease-spatial),
+    transform 160ms var(--ease-spatial);
+}
+
+.chrome__control--close {
+  right: 2.3%;
+}
+
+.chrome__control--minimize {
+  right: 6.8%;
+}
+
+.nova-surface[data-hovered='1'] .chrome__control {
+  background: rgba(23, 24, 26, 0.24);
+}
+
+.nova-surface[data-control='close'] .chrome__control--close {
+  background: #d8563f;
+  transform: translateY(-50%) scale(1.25);
+}
+
+.nova-surface[data-control='minimize'] .chrome__control--minimize {
+  background: var(--accent);
+  transform: translateY(-50%) scale(1.25);
+}
+
+.chrome__body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Resize affordance, matching the hit region in the opposite corner. */
+.chrome__resize {
+  position: absolute;
+  right: 3%;
+  bottom: 3.2%;
+  width: 3.4%;
+  aspect-ratio: 1;
+  border-right: 2px solid rgba(23, 24, 26, 0.16);
+  border-bottom: 2px solid rgba(23, 24, 26, 0.16);
+  border-bottom-right-radius: 5px;
+  opacity: 0;
+  transition: opacity 180ms var(--ease-spatial);
+  z-index: 2;
+}
+
+.nova-surface[data-hovered='1'] .chrome__resize {
+  opacity: 0.7;
+}
+
+.nova-surface[data-control='resize'] .chrome__resize {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   Application surfaces
+   -------------------------------------------------------------------------- */
+
+.surface {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* --- browser --- */
+
+.surface--browser {
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.browser__bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  flex: none;
+}
+
+.browser__nav {
+  display: flex;
+  gap: 10px;
+}
+
+.chevron {
+  width: 9px;
+  height: 9px;
+  border-left: 1.5px solid var(--text-tertiary);
+  border-bottom: 1.5px solid var(--text-tertiary);
+}
+
+.chevron--back {
+  transform: rotate(45deg);
+}
+
+.chevron--forward {
+  transform: rotate(-135deg);
+}
+
+.browser__address {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  letter-spacing: -0.005em;
+}
+
+.browser__lock {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: #56a07a;
+}
+
+.browser__page {
+  flex: 1;
+  padding: 18px 34px 0;
+  overflow: hidden;
+}
+
+.browser__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.browser__title {
+  margin: 0 0 10px;
+  font-size: 27px;
+  line-height: 1.16;
+  font-weight: 580;
+  letter-spacing: -0.025em;
+  max-width: 76%;
+}
+
+.browser__body {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 84%;
+}
+
+.browser__media {
+  height: 92px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eef0f4 0%, #e4e6ea 52%, #edeae5 100%);
+  margin-bottom: 18px;
+}
+
+.browser__columns {
+  display: flex;
+  gap: 28px;
+}
+
+.browser__column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.line {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--surface-secondary);
+}
+
+.line--100 {
+  width: 100%;
+}
+.line--90 {
+  width: 90%;
+}
+.line--80 {
+  width: 80%;
+}
+.line--70 {
+  width: 70%;
+}
+.line--60 {
+  width: 60%;
+}
+
+/* --- code --- */
+
+.surface--code {
+  background: #fcfcfb;
+}
+
+.code__sidebar {
+  width: 31%;
+  flex: none;
+  padding: 16px 0;
+  border-right: 1px solid var(--border-faint);
+  background: #f7f7f5;
+  font-size: 12.5px;
+}
+
+.code__sidebar-label {
+  padding: 0 16px 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.code__file {
+  padding: 5px 16px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.code__file.is-active {
+  background: rgba(91, 92, 226, 0.08);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.code__editor {
+  flex: 1;
+  padding: 16px 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.75;
+  overflow: hidden;
+}
+
+.code__line {
+  display: flex;
+  gap: 14px;
+  padding: 0 18px;
+  white-space: pre;
+}
+
+.code__number {
+  width: 18px;
+  text-align: right;
+  color: #c3c5c8;
+  flex: none;
+}
+
+.tok--kw {
+  color: #8250a8;
+}
+.tok--type {
+  color: #2f6fb0;
+}
+.tok--fn {
+  color: #2f6fb0;
+}
+.tok--str {
+  color: #3f8f6e;
+}
+.tok--com {
+  color: #a3a6aa;
+  font-style: italic;
+}
+.tok--arg {
+  color: #c06a3b;
+}
+.tok--op {
+  color: #5c6066;
+}
+
+/* --- files --- */
+
+.surface--files {
+  background: var(--surface);
+}
+
+.files__sidebar {
+  width: 30%;
+  flex: none;
+  padding: 16px 0;
+  background: #f7f7f5;
+  border-right: 1px solid var(--border-faint);
+}
+
+.files__place {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.files__place.is-active {
+  background: rgba(91, 92, 226, 0.08);
+  color: var(--text);
+}
+
+.files__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: #c8cacd;
+}
+
+.files__place.is-active .files__dot {
+  background: var(--accent);
+}
+
+.files__content {
+  flex: 1;
+  padding: 18px 20px;
+  min-width: 0;
+}
+
+.files__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.files__folder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.files__folder-mark {
+  width: 100%;
+  aspect-ratio: 1.3;
+  border-radius: 7px;
+  background: linear-gradient(160deg, #e8dcc4 0%, #dccfb3 100%);
+}
+
+.files__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.files__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-top: 1px solid var(--border-faint);
+  font-size: 12.5px;
+}
+
+.files__file-mark {
+  width: 11px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--surface-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.files__name {
+  flex: 1;
+  color: var(--text);
+}
+
+.files__meta {
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+}
+
+/* --- notes --- */
+
+.surface--notes {
+  flex-direction: column;
+  padding: 22px 30px;
+  background: var(--surface);
+}
+
+.notes__meta {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+
+.notes__title {
+  margin: 0 0 14px;
+  font-size: 23px;
+  font-weight: 580;
+  letter-spacing: -0.022em;
+}
+
+.notes__paragraph {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #33353a;
+}
+
+.notes__paragraph--muted {
+  color: var(--text-tertiary);
+}
+
+.notes__list {
+  margin: 0 0 16px;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: #33353a;
+}
+
+.notes__list .is-marked {
+  color: var(--text);
+  background: linear-gradient(transparent 62%, rgba(91, 92, 226, 0.16) 0);
+}
+
+/* --- terminal --- */
+
+.surface--terminal {
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 24px;
+  background: #16171a;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #c9ccd1;
+}
+
+.term__line {
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+}
+
+.term__line--out {
+  color: #8d9198;
+  padding-left: 17px;
+}
+
+.term__line--ok {
+  color: #6fbf97;
+  padding-left: 17px;
+}
+
+.term__sigil {
+  color: #7f80e8;
+}
+
+.term__caret {
+  width: 7px;
+  height: 14px;
+  background: #7f80e8;
+  opacity: 0.75;
+  display: inline-block;
+  transform: translateY(2px);
+}
+
+/* --------------------------------------------------------------------------
+   Spatial cursor
+   -------------------------------------------------------------------------- */
+
+.cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms var(--ease-spatial);
+  will-change: transform;
+}
+
+.cursor[data-visible='1'] {
+  opacity: 1;
+}
+
+/* The acknowledgement ring. Expands once from the point of contact and is gone
+   — it marks where something happened rather than decorating the pointer. */
+.cursor__pulse {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cursor[data-pulse='1'] .cursor__pulse {
+  animation: cursor-pulse 620ms var(--ease-spatial);
+}
+
+@keyframes cursor-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
+}
+
+/* Four ticks around the ring. They appear only once the ray has landed on
+   something, which is what turns a dot into a reticle aimed at an object. */
+.cursor__reticle {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%) scale(var(--cursor-scale, 1));
+  opacity: 0;
+  transition: opacity 180ms var(--ease-spatial);
+  background:
+    linear-gradient(var(--accent), var(--accent)) 50% 0 / 1px 5px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 50% 100% / 1px 5px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 0 50% / 5px 1px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 100% 50% / 5px 1px no-repeat;
+}
+
+.cursor[data-kind='window'] .cursor__reticle,
+.cursor[data-kind='core'] .cursor__reticle {
+  opacity: 0.55;
+}
+
+.cursor__ring,
+.cursor__point {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(var(--cursor-scale, 1));
+  transition:
+    width 200ms var(--ease-spatial),
+    height 200ms var(--ease-spatial),
+    border-color 200ms var(--ease-spatial),
+    background 200ms var(--ease-spatial);
+}
+
+.cursor__ring {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(23, 24, 26, 0.34);
+}
+
+.cursor__point {
+  width: 3px;
+  height: 3px;
+  background: rgba(23, 24, 26, 0.6);
+}
+
+/* Landing on a surface: the ring tightens and adopts the accent. */
+.cursor[data-mode='hover'] .cursor__ring,
+.cursor[data-mode='move'] .cursor__ring,
+.cursor[data-mode='scale'] .cursor__ring,
+.cursor[data-mode='rotate'] .cursor__ring {
+  width: 17px;
+  height: 17px;
+  border-color: rgba(91, 92, 226, 0.75);
+  border-width: 1.5px;
+}
+
+.cursor[data-mode='move'] .cursor__ring {
+  width: 12px;
+  height: 12px;
+  background: rgba(91, 92, 226, 0.14);
+}
+
+.cursor[data-control='close'] .cursor__ring {
+  border-color: rgba(216, 86, 63, 0.8);
+}
+
+.cursor__readout {
+  position: absolute;
+  left: 18px;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity 180ms var(--ease-spatial),
+    transform 180ms var(--ease-spatial);
+}
+
+.cursor[data-kind='window'] .cursor__readout,
+.cursor[data-kind='core'] .cursor__readout {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.cursor__label {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* A short track reading where the touched surface sits between back and front. */
+.cursor__depth {
+  position: relative;
+  width: 34px;
+  height: 1px;
+  background: rgba(23, 24, 26, 0.14);
+}
+
+.cursor[data-kind='core'] .cursor__depth {
+  opacity: 0;
+}
+
+.cursor__depth-mark {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--cursor-depth, 0.5) * 100%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
+
+/* --------------------------------------------------------------------------
+   System interface
+   -------------------------------------------------------------------------- */
+
+.identity {
+  position: absolute;
+  top: 30px;
+  left: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.identity__mark {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--text);
+}
+
+.identity__state {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   System HUD
+
+   One panel, top right, reading the state of every modality from the system
+   that owns it. Kept narrow and hairline-bordered so it reads as an instrument
+   laid over the space rather than as a window inside it.
+   -------------------------------------------------------------------------- */
+
+.hud {
+  position: absolute;
+  top: 28px;
+  right: 28px;
+  width: 248px;
+  padding: 14px 15px 13px;
+  border-radius: 14px;
+  background: var(--glass);
+  border: 1px solid var(--border-faint);
+  box-shadow:
+    0 1px 2px rgba(20, 22, 26, 0.03),
+    0 18px 44px rgba(20, 22, 26, 0.09);
+  backdrop-filter: blur(18px) saturate(1.3);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  pointer-events: auto;
+}
+
+.hud__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.hud__mark {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--text);
+}
+
+.hud__online {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.hud__online .hud__dot {
+  background: var(--signal-ok);
+  box-shadow: 0 0 0 3px rgba(44, 150, 110, 0.12);
+}
+
+.hud__online[data-state='listening'] .hud__dot,
+.hud__online[data-state='working'] .hud__dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91, 92, 226, 0.16);
+  animation: nova-breathe 1.6s infinite var(--ease-spatial);
+}
+
+.hud__section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 3px 0;
+  text-align: left;
+}
+
+/* The label is fixed and the value shrinks, so a long platform string ellipses
+   instead of pushing the panel past the edge of the screen. */
+.hud__label {
+  flex: none;
+}
+
+/* A row that is a switch, not a reading.
+   The camera control used to be a labelled chip of its own and briefly became
+   indistinguishable from the static rows around it, which is how hand tracking
+   came to look as though it had been removed. The hairline and the cursor are
+   what say "this one you can press". */
+.hud__row--action {
+  border-radius: 7px;
+  margin: 0 -7px;
+  padding: 3px 7px;
+  width: calc(100% + 14px);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--border-faint);
+  transition:
+    background 180ms var(--ease-spatial),
+    box-shadow 180ms var(--ease-spatial);
+}
+
+.hud__row--action:hover {
+  background: rgba(91, 92, 226, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(91, 92, 226, 0.28);
+}
+
+.hud__hand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The camera preview, offered only while the camera is on. */
+.hud__aside {
+  align-self: flex-end;
+  padding: 1px 0;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: color 180ms var(--ease-spatial), border-color 180ms var(--ease-spatial);
+}
+
+.hud__aside:hover {
+  color: var(--accent);
+  border-bottom-color: rgba(91, 92, 226, 0.4);
+}
+
+.hud__aside[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+.hud__label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hud__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: -0.005em;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hud__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--text-tertiary);
+  transition: background 240ms var(--ease-spatial), box-shadow 240ms var(--ease-spatial);
+}
+
+.hud__value[data-tone='ok'] .hud__dot {
+  background: var(--signal-ok);
+}
+
+.hud__value[data-tone='live'] {
+  color: var(--text);
+}
+
+.hud__value[data-tone='live'] .hud__dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91, 92, 226, 0.16);
+  animation: nova-breathe 1.4s infinite var(--ease-spatial);
+}
+
+.hud__value[data-tone='warn'] .hud__dot {
+  background: var(--signal-warn);
+}
+
+.hud__value[data-tone='off'] {
+  color: var(--text-tertiary);
+}
+
+.hud__value[data-tone='off'] .hud__dot {
+  background: #cdcfd2;
+}
+
+.hud__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: 11px;
+  margin-bottom: 3px;
+  border-top: 1px solid var(--border-faint);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hud__count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.hud__app {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2.5px 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.hud__app-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  border: 1px solid #c8cacd;
+  background: transparent;
+}
+
+.hud__app[data-running='true'] {
+  color: var(--text-secondary);
+}
+
+.hud__app[data-running='true'] .hud__app-dot {
+  background: var(--signal-ok);
+  border-color: var(--signal-ok);
+  box-shadow: 0 0 0 2.5px rgba(44, 150, 110, 0.13);
+}
+
+.hud__app-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hud__app-state {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  flex: none;
+}
+
+/* NOVA Pulse — the one moving thing in the panel.
+   Its job is to say that native awareness is continuous rather than a reading
+   taken once. Purely decorative: the count beside it comes from the same
+   snapshot as every other native row, so the animation can never disagree with
+   the system it describes. */
+.hud__pulse {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-faint);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hud__pulse-label {
+  color: var(--text-secondary);
+}
+
+.hud__pulse-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__pulse-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: #c8cacd;
+}
+
+.hud__pulse[data-live='true'] .hud__pulse-dot {
+  background: var(--accent);
+  animation: nova-pulse 2.4s infinite var(--ease-spatial);
+}
+
+@keyframes nova-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 92, 226, 0.28);
+    opacity: 0.75;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(91, 92, 226, 0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud__pulse[data-live='true'] .hud__pulse-dot {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Spatial Command Deck
+
+   An arc of applications summoned beside the cursor. Glass, a hairline and a
+   restrained tint on whatever is highlighted — the same vocabulary as the HUD
+   and the window chrome, so it reads as part of NOVA rather than a menu that
+   wandered in from an operating system.
+   -------------------------------------------------------------------------- */
+
+.deck-trigger {
+  position: absolute;
+  bottom: 26px;
+  right: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px 7px 11px;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--border-faint);
+  box-shadow: 0 1px 2px rgba(20, 22, 26, 0.04), 0 10px 26px rgba(20, 22, 26, 0.07);
+  backdrop-filter: blur(18px) saturate(1.3);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  pointer-events: auto;
+  transition: border-color 180ms var(--ease-spatial), color 180ms var(--ease-spatial);
+}
+
+.deck-trigger:hover,
+.deck-trigger[data-open='true'] {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+}
+
+.deck-trigger__ring {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+}
+
+.deck-trigger[data-open='true'] .deck-trigger__ring {
+  background: var(--accent);
+}
+
+/* The arc itself. A zero-size anchor: every item is positioned off this point,
+   so moving the deck is one transform rather than five. */
+.deck {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.deck__title {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  opacity: 0;
+  animation: deck-in 260ms var(--ease-spatial) 60ms forwards;
+}
+
+.deck__item {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 74px;
+  height: 62px;
+  margin: -31px 0 0 -37px;
+  border-radius: 13px;
+  background: var(--glass);
+  border: 1px solid var(--border-faint);
+  box-shadow: 0 1px 2px rgba(20, 22, 26, 0.04), 0 12px 30px rgba(20, 22, 26, 0.08);
+  backdrop-filter: blur(16px) saturate(1.25);
+  color: var(--text-secondary);
+  pointer-events: auto;
+  opacity: 0;
+  animation: deck-in 240ms var(--ease-spatial) forwards;
+  transition:
+    border-color 160ms var(--ease-spatial),
+    color 160ms var(--ease-spatial),
+    box-shadow 160ms var(--ease-spatial);
+}
+
+/* Highlight. The tint belongs to the app and the lift belongs to the pointer —
+   held well below a glow, like focus on a window. */
+.deck__item[data-active='true'] {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--tint) 58%, var(--border));
+  box-shadow:
+    0 1px 2px rgba(20, 22, 26, 0.05),
+    0 16px 38px rgba(20, 22, 26, 0.11),
+    0 0 0 3px color-mix(in srgb, var(--tint) 12%, transparent);
+}
+
+.deck__item[data-active='true'] svg {
+  color: var(--tint);
+}
+
+.deck__label {
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+/* Opacity only, never transform: each item carries its seat on the arc as an
+   inline transform, and animating that property here would drag all five back
+   to the anchor for the length of the fade. */
+@keyframes deck-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck__item,
+  .deck__title {
+    animation-duration: 1ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Voice
+
+   The one control with real weight. The outer ring is scaled by --level, which
+   the panel writes every frame from the measured input signal — so a still ring
+   means a still microphone, and the indicator cannot claim to be hearing
+   somebody it is not.
+   -------------------------------------------------------------------------- */
+
+.voice {
+  --level: 0;
+  position: absolute;
+  left: 32px;
+  bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  pointer-events: auto;
+}
+
+.voice__key {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  background: var(--glass);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 1px 2px rgba(20, 22, 26, 0.04),
+    0 10px 26px rgba(20, 22, 26, 0.10);
+  backdrop-filter: blur(16px);
+  transition:
+    color 200ms var(--ease-spatial),
+    border-color 200ms var(--ease-spatial),
+    transform 240ms var(--ease-spatial);
+}
+
+.voice__key:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(91, 92, 226, 0.36);
+  color: var(--text);
+}
+
+.voice__key:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.voice__key svg {
+  position: relative;
+  z-index: 2;
+}
+
+/* A steady ring that appears with the listening state. */
+.voice__halo,
+.voice__level {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms var(--ease-spatial);
+}
+
+.voice__halo {
+  border: 1px solid rgba(91, 92, 226, 0.5);
+}
+
+/* The live one. Scale and alpha both come from the measured level, so silence
+   is visibly silence rather than a slower animation. */
+.voice__level {
+  border: 1px solid rgba(91, 92, 226, 0.34);
+  transform: scale(calc(1 + var(--level) * 0.58));
+  opacity: 0;
+}
+
+.voice[data-status='listening'] .voice__halo,
+.voice[data-status='starting'] .voice__halo {
+  opacity: 1;
+}
+
+.voice[data-status='starting'] .voice__halo {
+  animation: nova-breathe 1.5s infinite var(--ease-spatial);
+}
+
+.voice[data-status='listening'] .voice__level {
+  opacity: calc(0.25 + var(--level) * 0.75);
+}
+
+.voice[data-status='listening'] .voice__key,
+.voice[data-status='processing'] .voice__key {
+  color: var(--accent);
+  border-color: rgba(91, 92, 226, 0.42);
+}
+
+.voice[data-status='success'] .voice__key {
+  color: var(--signal-ok);
+  border-color: rgba(44, 150, 110, 0.4);
+}
+
+.voice[data-status='error'] .voice__key,
+.voice[data-status='unsupported'] .voice__key {
+  color: var(--signal-bad);
+  border-color: rgba(184, 82, 60, 0.3);
+}
+
+.voice__readout {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 300px;
+}
+
+.voice__state {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.voice[data-status='listening'] .voice__state {
+  color: var(--accent);
+}
+
+.voice[data-status='error'] .voice__state,
+.voice[data-status='unsupported'] .voice__state {
+  color: var(--signal-bad);
+}
+
+.voice__detail {
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
+  color: var(--text-tertiary);
+}
+
+.voice[data-status='listening'] .voice__detail,
+.voice[data-status='processing'] .voice__detail {
+  color: var(--text);
+}
+
+@keyframes nova-breathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+.rail {
+  position: absolute;
+  left: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rail__item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--text-tertiary);
+  transition: color 240ms var(--ease-spatial);
+}
+
+.rail__item:hover {
+  color: var(--text-secondary);
+}
+
+.rail__item.is-active {
+  color: var(--text);
+}
+
+.rail__index {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+}
+
+.rail__name {
+  position: relative;
+  font-size: 11.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.rail__name::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 1px;
+  width: 0;
+  background: var(--accent);
+  transition: width 340ms var(--ease-spatial);
+}
+
+.rail__item.is-active .rail__name::after {
+  width: 100%;
+}
+
+.notice-anchor {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+/* NOVA answering. A card rather than a pill: it is named, so it reads as the
+   system speaking rather than as a toast the browser produced. */
+.notice {
+  display: flex;
+  align-items: baseline;
+  gap: 11px;
+  padding: 8px 15px 8px 13px;
+  border-radius: 12px;
+  background: var(--glass-strong);
+  border: 1px solid var(--border-faint);
+  box-shadow:
+    0 1px 2px rgba(20, 22, 26, 0.04),
+    0 14px 38px rgba(20, 22, 26, 0.12);
+  backdrop-filter: blur(18px) saturate(1.3);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+/* A hairline down the leading edge carries the outcome. It is the only place
+   in the interface where a colour states a result. */
+.notice::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text-tertiary);
+}
+
+.notice[data-kind='working']::before {
+  background: var(--accent);
+}
+
+.notice[data-kind='success']::before {
+  background: var(--signal-ok);
+}
+
+.notice[data-kind='error']::before {
+  background: var(--signal-bad);
+}
+
+.notice__mark {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--text-tertiary);
+  flex: none;
+}
+
+.notice__text {
+  font-size: 12.5px;
+  letter-spacing: -0.008em;
+  color: var(--text);
+}
+
+.notice[data-kind='error'] .notice__text {
+  color: var(--signal-bad);
+}
+
+/* A single line along the very bottom edge.
+   Windows move freely in 3D, so a tall block in the corner will sooner or later
+   sit on top of one — at 1080p the Notes surface reaches y=977 and a stacked
+   legend could not clear it. Laid out as one row the legend is ~13px tall and
+   lives below everything, whatever the arrangement.
+   Opacity is owned by the motion transition, not by this rule. */
+.hints {
+  position: absolute;
+  right: 26px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 17px;
+  pointer-events: none;
+}
+
+.hints__row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 10px;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+}
+
+.hints__key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.hints__meaning {
+  text-align: left;
+}
+
+/* --- command line --- */
+
+/* The command line sits just above the Core, so the thing being spoken to stays
+   visible beneath it. Examples stack upward for the same reason. */
+.command-anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 232px;
+  display: flex;
+  justify-content: center;
+}
+
+.command {
+  width: min(560px, calc(100vw - 96px));
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 12px;
+}
+
+.command__field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 2px 6px rgba(20, 22, 26, 0.05),
+    0 24px 60px rgba(20, 22, 26, 0.14);
+  backdrop-filter: blur(16px);
+}
+
+.command__sigil {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+  box-shadow: 0 0 0 4px rgba(91, 92, 226, 0.14);
+  transition: background 220ms var(--ease-spatial), box-shadow 220ms var(--ease-spatial);
+}
+
+/* While NOVA is listening, the command line's mark carries the same breath the
+   microphone ring does, so the two ends of one act read as one thing. */
+.command__sigil[data-voice='starting'],
+.command__sigil[data-voice='listening'] {
+  animation: nova-breathe 1.5s infinite var(--ease-spatial);
+}
+
+.command__sigil[data-voice='processing'] {
+  background: var(--signal-warn);
+  box-shadow: 0 0 0 4px rgba(198, 139, 23, 0.16);
+}
+
+.command__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 14.5px;
+  letter-spacing: -0.008em;
+  color: var(--text);
+}
+
+.command__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.command__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.command__example {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-faint);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition:
+    color 180ms var(--ease-spatial),
+    border-color 180ms var(--ease-spatial);
+}
+
+.command__example:hover {
+  color: var(--text);
+  border-color: rgba(91, 92, 226, 0.4);
+}
+
+.command__error {
+  margin: 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: #b4523c;
+}
+
+/* --------------------------------------------------------------------------
+   Vision debug overlay
+   -------------------------------------------------------------------------- */
+
+/* The camera view.
+   Moved off the top-right corner, which the system HUD now occupies — an
+   overlay that covers the panel reporting the camera's state is the one place
+   it must not sit. Anchored to the bottom instead, so it grows upward and
+   leaves the HUD and the voice control both readable. */
+.vision-debug-panel {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  max-height: calc(100vh - 420px);
+  overflow-y: auto;
+  width: 304px;
+  background: rgba(18, 20, 24, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  color: #e4e6ea;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  z-index: 999;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.vision-debug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vision-debug-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #8c9099;
+}
+
+.vision-debug-close {
+  color: #8c9099;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.vision-debug-close:hover {
+  color: #ffffff;
+}
+
+.vision-debug-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vision-debug-canvas {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: #0d0e11;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: block;
+}
+
+.vision-debug-telemetry {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.debug-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.debug-k {
+  color: #7b808a;
+}
+
+.debug-v {
+  color: #d8dade;
+  font-weight: 500;
+}
+
+.debug-ok {
+  color: #4ade80;
+}
+
+.debug-highlight {
+  color: #818cf8;
+}
+
+.vision-debug-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.vision-debug-slider-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: #9da2ad;
+}
+
+.vision-debug-slider-label input[type='range'] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Context inspector (development only)
+   Shares the vision overlay's vocabulary deliberately: both are instruments,
+   not interface, and should never be mistaken for part of NOVA itself.
+   -------------------------------------------------------------------------- */
+
+.context-inspector {
+  position: absolute;
+  left: 24px;
+  bottom: 72px;
+  width: 296px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: rgba(18, 20, 24, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  color: #e4e6ea;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  z-index: 999;
+  pointer-events: auto;
+}
+
+.context-inspector__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.context-inspector__title {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #8c9099;
+}
+
+.context-inspector__close {
+  color: #8c9099;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.context-inspector__close:hover {
+  color: #ffffff;
+}
+
+.context-inspector__body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.context-inspector__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.context-inspector__windows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.context-inspector__window {
+  display: grid;
+  grid-template-columns: 62px 84px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.context-inspector__name {
+  color: #d8dade;
+  font-weight: 500;
+}
+
+.context-inspector__name.is-focused {
+  color: #818cf8;
+}
+
+.context-inspector__role,
+.context-inspector__relations {
+  color: #7b808a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-inspector__memory {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.context-inspector__memory-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #8c9099;
+}
+
+.context-inspector__memory-empty,
+.context-inspector__memory-report {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #7b808a;
+}
+
+.context-inspector__memory-report {
+  color: #9da2ad;
+}
+
+.context-inspector__memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.context-inspector__memory-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.context-inspector__memory-name {
+  color: #d8dade;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-inspector__memory-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: flex;
+  gap: 6px;
+}
+
+.context-inspector__memory-actions button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #7b808a;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.context-inspector__memory-actions button:hover {
+  color: #818cf8;
+}
+
+.context-inspector__trace {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.context-inspector__trace-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #d8dade;
+}
+
+.context-inspector__trace-line {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.context-inspector__trace-line > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-inspector__trace-said {
+  color: #b9bdc5;
+  font-style: italic;
+}
+
+.context-inspector__trace-line [data-result='success'] {
+  color: #2cb67d;
+}
+
+.context-inspector__trace-line [data-result='clarification'] {
+  color: #ffb400;
+}
+
+.context-inspector__trace-line [data-result='unresolved'],
+.context-inspector__trace-line [data-result='error'] {
+  color: #d8563f;
+}
+
+.context-inspector__native-refresh {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #7b808a;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.context-inspector__native-refresh:hover:not(:disabled) {
+  color: #818cf8;
+}
+
+.context-inspector__native-refresh:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.context-inspector__native-caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.context-inspector__native-cap {
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #7b808a;
+}
+
+.context-inspector__native-cap[data-allowed='true'] {
+  color: #2cb67d;
+  border-color: rgba(44, 182, 125, 0.35);
+}
+
+.context-inspector__role[data-sync='synced'] {
+  color: #2cb67d;
+}
+
+.context-inspector__role[data-sync='native-only'] {
+  color: #ffb400;
+}
+
+.context-inspector__role[data-sync='spatial-only'] {
+  color: #818cf8;
+}
+
+.context-inspector__role[data-sync='unknown'],
+.context-inspector__role[data-sync='absent'] {
+  color: #7b808a;
+}
+
+.context-inspector__payload-toggle {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  color: #9da2ad;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.context-inspector__payload-toggle:hover {
+  color: #ffffff;
+}
+
+.context-inspector__payload {
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-size: 9.5px;
+  line-height: 1.45;
+  color: #b9bdc5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* --------------------------------------------------------------------------
+   Smaller laptop displays — the environment stays spatial, the chrome tightens.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1440px) {
+  .identity {
+    top: 24px;
+    left: 24px;
+  }
+  .rail {
+    left: 24px;
+    gap: 12px;
+  }
+  .hints {
+    right: 24px;
+    bottom: 14px;
+    gap: 14px;
+  }
+  .command-anchor {
+    bottom: 208px;
+  }
+}
+
+@media (max-height: 800px) {
+  .hints {
+    display: none;
+  }
+  .command-anchor {
+    bottom: 168px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
