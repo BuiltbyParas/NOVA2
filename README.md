@@ -53,6 +53,9 @@ as they were delivered. Phase 9 onward is the current implementation.
 The source code labels the Phase 9.5 discovery work "Phase 9.5A", and the gesture
 work "Phase 9.5B"; the two names refer to the same milestones.
 
+What each phase contributed, with its commits, is in [docs/phases](docs/phases/README.md);
+how the phases stack into one system is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Status
 
 **Phase 9.5B is the current implementation state.** A gesture is a way of
