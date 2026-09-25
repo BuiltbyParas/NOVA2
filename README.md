@@ -1,4 +1,4 @@
-# NOVA — Phase 8: Native System Awareness
+# NOVA — Phase 9.5B: Gesture-Native Air Click
 
 ![Phase 1 — complete](https://img.shields.io/badge/phase%201-complete-5B5CE2?style=flat-square)
 ![Phase 2 — complete](https://img.shields.io/badge/phase%202-complete-5B5CE2?style=flat-square)
@@ -8,6 +8,9 @@
 ![Phase 6 — complete](https://img.shields.io/badge/phase%206-complete-5B5CE2?style=flat-square)
 ![Phase 7 — complete](https://img.shields.io/badge/phase%207-complete-5B5CE2?style=flat-square)
 ![Phase 8 — complete](https://img.shields.io/badge/phase%208-complete-5B5CE2?style=flat-square)
+![Phase 9 — complete](https://img.shields.io/badge/phase%209-complete-5B5CE2?style=flat-square)
+![Phase 9.5 — current milestone](https://img.shields.io/badge/phase%209.5-current%20milestone-2F9E6E?style=flat-square)
+![Phase 9.5B — current](https://img.shields.io/badge/phase%209.5B-current-2F9E6E?style=flat-square)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-Tasks%20Vision-6B6D70?style=flat-square)
 ![React 19](https://img.shields.io/badge/React-19-6B6D70?style=flat-square&logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-6B6D70?style=flat-square&logo=typescript&logoColor=white)
@@ -23,8 +26,54 @@ turns sentences into structured intent. Phase 4 gave NOVA a model of what the
 arrangement *means*. Phase 5 lets a meaningful arrangement be kept and returned to.
 Phase 6 adds a second way to say all of it out loud. Phase 7 lets the ways be
 used together. Phase 8 opens NOVA's eyes to the computer it is running on.
+Phase 9 lets NOVA open an application on that computer, through one narrow,
+validated action. Phase 9.5 extends that to any application that is actually
+installed, by name. Phase 9.5B makes the hand a first-class way to issue the same
+commands — point at a window and double pinch to select it.
+
+## Where NOVA is now
+
+**NOVA is at Phase 9.5B.** Phases 1–8 are completed milestones, documented below
+as they were delivered. Phase 9 onward is the current implementation.
+
+| Phase | Milestone | State |
+| --- | --- | --- |
+| 1 | Spatial Environment | complete |
+| 2 | Hand Interaction | complete |
+| 3 | Gemini Intelligence | complete |
+| 4 | Context Awareness | complete |
+| 5 | Spatial Memory | complete |
+| 6 | Voice | complete |
+| 7 | Multimodal | complete |
+| 8 | Native System Awareness | complete |
+| 9 | Native Application Control | complete |
+| 9.5 | Universal application discovery and launch | current development milestone |
+| 9.5B | Gesture-native commands and air click | current implementation state |
+
+The source code labels the Phase 9.5 discovery work "Phase 9.5A", and the gesture
+work "Phase 9.5B"; the two names refer to the same milestones.
 
 ## Status
+
+**Phase 9.5B is the current implementation state.** A gesture is a way of
+saying a command, not a second way of executing one. Pointing at a window and
+double pinching produces the sentence `open <window>` and hands it to the same
+`routeUtterance` that typing and speech use. Air click is hardened so that it is
+reliable with a real hand: hand-originated commands are labelled `gesture`, the
+0.6 hand-confidence floor gates every hand action, a double pinch never nudges
+the window it selects, and the Command Deck owns the double pinch while it is
+open. `npm test` runs 131 gesture assertions.
+
+**Phase 9.5 is the current development milestone.** `open Spotify` resolves the
+name against the installed-application catalog Phase 8 already reads, and
+launches the application by its desktop entry id. A category word — `open
+browser` — still opens NOVA's own surface and launches nothing. `npm test` runs
+198 catalog assertions.
+
+**Phase 9 is complete.** NOVA gained exactly one native action: open an approved
+application. The browser can only name an application identity; the server
+validates it against its own enumeration and launches it through the desktop's
+own activation path, with no shell. `npm test` runs 151 native-action assertions.
 
 **Phase 8 is complete, and is read-only.** NOVA can now see what host it is on,
 what desktop session it is in, and which applications are installed and running.
@@ -96,6 +145,28 @@ bare Vite for pure interface work, and its name says what it lacks.
 
 `npm run build` produces a static bundle; `npm run preview` serves it.
 
+### Verifying it
+
+`npm test` runs eleven self-contained suites under `tsx`; each can also be run
+alone. Current totals:
+
+| Script | Covers | Assertions |
+| --- | --- | --- |
+| `test:builtins` | Phase 1 command matching | 123 |
+| `test:vision` | Phase 2 recogniser, smoothing, input source | all suites pass |
+| `test:context` | Phase 4 context engine and references | 102 |
+| `test:memory` | Phase 5 spatial memory | 120 |
+| `test:voice` | Phase 6 voice lifecycle | 123 |
+| `test:multimodal` | Phase 7 referents and priority model | 99 |
+| `test:native` | Phase 8 native awareness | 166 |
+| `test:native-action` | Phase 9 controlled launch | 151 |
+| `test:catalog` | Phase 9.5 application discovery | 198 |
+| `test:gesture` | Phase 9.5B gesture pipeline and air click | 131 |
+| `test:sync` | native–spatial comparison | 102 |
+
+No suite claims that a real application launched or that a real camera tracked a
+hand: both are verified on the machine itself, not in a unit test.
+
 ### Spatial Hand Interactions (Phase 2)
 Press `v` or click `Vision off` in the top-left status bar to toggle Vision Mode.
 
@@ -128,6 +199,102 @@ candidates as buttons. Nothing is executed while the question is open.
 Press `c` in a development build for the context inspector: current workspace,
 task, focus, recency, each window's semantic role and relations, and the exact
 payload handed to the model. It is compiled out of production builds entirely.
+
+### Pointing and selecting with a hand (Phase 9.5B)
+
+With Vision on (`v`), point at a window:
+
+| You do | NOVA shows / does |
+| --- | --- |
+| point at a window with a confident hand | a thin accent outline and a slight lift — the window a double pinch would select |
+| double pinch | selects that window: `open <window>`, through the ordinary pipeline |
+| pinch and move | drags the window once the pinch leaves a small dead-zone |
+| open the Command Deck, point at an item, double pinch | opens that item; the window behind the deck is not touched |
+
+The rules that make it safe with a real hand, all enforced in
+`systems/interaction/interactionSystem.ts`:
+
+- **Labelled honestly.** Commands from a hand carry `source: 'gesture'`; the
+  mouse stays `'pointer'`. The device is read from `inputRouter` as each frame
+  arrives, so the multimodal referent knows which device acted.
+- **Confidence floor.** The existing 0.6 floor (`MIN_HAND_CONFIDENCE`) gates hand
+  press, close, minimize, Core and activation. A half-detected hand does nothing.
+- **A double pinch is a tap, not a drag.** A hand pinch must travel 0.09 NDC or
+  last 280 ms — the recogniser's own definition of a tap, `TAP_MAX_TRAVEL` and
+  `TAP_MAX_MS` — before the window follows it, and the drag then starts from
+  where the hand is, without a jump. A pinch that never travelled activates on
+  release. Mouse dragging has no dead-zone.
+- **One activation per double pinch**, however many frames render it. Single
+  pinches, held pinches, drags and a pinch at nothing never activate.
+- **The deck owns activation while open** (`interaction.claimActivation`), so one
+  double pinch is exactly one choice.
+
+The armed outline appears only for a confident hand on a live window; mouse
+hover is unchanged. Real-camera feel — how the dead-zone and outline behave on
+real hardware — is verified by hand, not by the test suite.
+
+### Opening real applications (Phase 9 and 9.5)
+
+| You say | NOVA does |
+| --- | --- |
+| `open browser`, `open terminal`, `open notes` | opens or reveals NOVA's own surface; launches nothing |
+| `open Spotify`, `open Calculator`, `open Firefox` | resolves the name against the installed catalog and launches that application |
+| a name two installed applications fit equally well | asks which one, rather than guessing |
+| a name nothing installed matches | launches nothing — an application that is not installed is never invented |
+| `open bash -c id`, `open /bin/bash` | matches nothing; never reaches the launcher |
+
+**A category opens a surface; only a product name launches a program.** The
+five category words name NOVA's spatial applications. Launching the host's
+browser and terminal for them buried the spatial shell under the very commands
+meant to arrange it, so they no longer do.
+
+```
+  "open Spotify"
+    ↓  routeUtterance → contextBridge.translateOpen
+  resolveApplication(name, catalog)     ← returns only an id copied from the catalog
+    ↓  { action: 'open-application', applicationId: 'com.spotify.Client' }
+  Command Bus → SystemAdapter.perform   ← the one capability: OPEN_APPLICATION
+    ↓  POST /api/native/action  { capability, applicationId }
+  native/linuxLauncher.ts               ← shape → membership → resolution
+    ↓  spawn('gio', ['launch', <desktop entry path>], { shell: false })
+  the desktop's own activation path
+```
+
+**Why this is not arbitrary execution.** The request can carry exactly two
+fields, both from closed sets: there is no path, command or argument to express.
+The server accepts an id only if it is shaped like a bare desktop id, is present
+in the catalog the server itself enumerated from the desktop-entry directories
+(refreshed every 10 seconds), and resolves to an entry file on disk — membership
+is the authority, not the regex. The program is the constant `gio`, the argument
+vector is `launch` plus a path the server computed, and `shell` is false, so a
+semicolon or `$(…)` is an ordinary character. OS error text is logged on the
+server and never returned to the browser. The five spatial types additionally
+map, on the server, to preference-ordered desktop entries — on this machine
+Firefox, VS Code, Nautilus, Text Editor and Ptyxis.
+
+Gemini is told the same rule: for `open Spotify` it returns the *name* the user
+said, never a desktop id, path or command, and NOVA resolves the name itself.
+
+### What else is in the current implementation
+
+These arrived during Phase 9.5B and are part of what NOVA is today:
+
+- **Native–spatial comparison** (`systems/native/nativeSpatialSync.ts`). A pure,
+  read-only comparison of NOVA's surfaces with the real computer: each
+  application is `synced`, `native-only`, `spatial-only`, `absent` or `unknown`,
+  and a requested launch stays "requested" for up to 45 s until a snapshot
+  confirms it. It reports the difference and never acts on it; shown in the
+  context inspector (`c`).
+- **Status HUD.** Voice, Hand, Native and AI state at a glance, the running
+  native applications, and the *NOVA Pulse* count of active applications.
+- **Focus moment.** A one-shot ring as a window takes focus, distinct from the
+  sustained state of being focused; disabled under reduced motion.
+- **Command Deck.** The `NOVA` button summons an arc of the five surfaces beside
+  the cursor. Choosing one — by click or by pointing and double pinching — sends
+  `open <surface>` through `routeUtterance`; the deck has no execution path of
+  its own.
+- **Presentation mode** (`p`). Withholds the developer context inspector and
+  nothing else.
 
 ### Seeing the real computer (Phase 8)
 
@@ -171,6 +338,11 @@ avoided because command lines carry arguments, and arguments carry secrets; only
 `comm`, a bare program name, is read. Only applications that have a desktop entry
 are ever named, so this cannot enumerate somebody's background services.
 
+> **Since Phase 9:** NOVA may now open an approved application, through a
+> separate endpoint and a separate file (`native/linuxLauncher.ts`). Everything
+> above remains true of the snapshot path, which is still read-only, and none of
+> focus, move, close, `exec` or a shell exists anywhere.
+
 #### Native state is not spatial state
 
 This is the load-bearing distinction. A native window has a process, a title and
@@ -182,6 +354,10 @@ they were made on. Several native applications map onto one NOVA identity —
 Firefox, Chrome and Brave are all `browser` — while each keeps its own name and
 native id. Anything unrecognised stays `unknown`, because a wrong mapping is
 worse than none.
+
+> **Since Phase 9.5B:** the two are now *compared* — `nativeSpatialSync` reports
+> whether a surface and its application agree — but still never merged, and the
+> comparison changes neither side.
 
 Native awareness is entirely optional. `npm run dev` provides it. Under
 `npm run dev:frontend-only` there is no provider, every capability is `false`,
@@ -408,6 +584,11 @@ a rewrite.
 to act. It has no `launch`, no `openFile` and no `exec`: declaring methods nobody
 implements would be a promise the code does not keep, and an execution capability
 needs a safety argument Phase 8 has not made. Awareness comes before control.
+
+> **Since Phase 9:** the adapter declares exactly one capability,
+> `OPEN_APPLICATION`, with its safety argument written out in
+> `native/linuxLauncher.ts` and under *Opening real applications* above. Every
+> other native action is still absent.
 
 ### How voice works
 
