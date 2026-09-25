@@ -105,6 +105,9 @@ export function planRestore(memory: SpatialMemory, presentIds: Set<string>): Res
 
   commands.push({ action: 'workspace', target: snapshot.workspace.id });
   if (snapshot.task) commands.push({ action: 'task', target: snapshot.task.id });
+  if (snapshot.layerIndex !== undefined) {
+    commands.push({ action: 'layer-go', target: snapshot.layerIndex });
+  }
 
   for (const win of snapshot.windows) {
     if (!presentIds.has(win.id)) {

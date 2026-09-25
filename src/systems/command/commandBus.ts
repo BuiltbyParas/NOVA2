@@ -213,6 +213,16 @@ function execute(command: NovaCommand) {
       return;
     }
 
+    case 'layer': {
+      store.navigateLayer(command.direction);
+      return;
+    }
+
+    case 'layer-go': {
+      store.goToLayer(command.target);
+      return;
+    }
+
     case 'task': {
       store.setTask(command.target);
       if (command.target && TASKS[command.target]) {

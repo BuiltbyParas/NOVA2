@@ -74,6 +74,8 @@ export interface MemorySnapshot {
   relationships: RememberedRelation[];
   /** Recency order at the time, most recently used last. */
   recent: string[];
+  /** Phase 13: Remembered spatial application layer index */
+  layerIndex?: number;
 }
 
 export interface SpatialMemory {

@@ -1,6 +1,10 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import type { Mesh } from 'three';
 import { Environment, Lightformer } from '@react-three/drei';
 import { ENVIRONMENT } from '../../data/environment';
+import { spatial } from '../../state/spatialStore';
+import { damp } from '../../utils/math';
 import {
   createBackdropTexture,
   createFieldFadeTexture,
@@ -31,6 +35,9 @@ export function EnvironmentRig() {
   const field = useMemo(() => createFieldTexture(), []);
   const fieldFade = useMemo(() => createFieldFadeTexture(), []);
 
+  const floorRef = useRef<Mesh>(null);
+  const backdropRef = useRef<Mesh>(null);
+
   // Procedural textures are generated once, and are this component's to release.
   useEffect(
     () => () => {
@@ -40,6 +47,32 @@ export function EnvironmentRig() {
     },
     [backdrop, field, fieldFade],
   );
+
+  // Phase 13: Subtly participate in spatial layer transitions via parallax displacement
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 1 / 30);
+    const store = spatial();
+    const { phase, progress, direction } = store.layer;
+
+    let targetFloorX = 0;
+    let targetBackdropX = 0;
+
+    if (phase === 'transitioning') {
+      const dirSign = direction === 'next' ? -1 : 1;
+      // Parallax shift: floor moves subtly, distant backdrop moves at half that rate
+      // Peak displacement at midpoint of transition (sin curve)
+      const shift = Math.sin(progress * Math.PI) * dirSign;
+      targetFloorX = shift * 0.38;
+      targetBackdropX = shift * 0.16;
+    }
+
+    if (floorRef.current) {
+      floorRef.current.position.x = damp(floorRef.current.position.x, targetFloorX, 6.0, dt);
+    }
+    if (backdropRef.current) {
+      backdropRef.current.position.x = damp(backdropRef.current.position.x, targetBackdropX, 5.0, dt);
+    }
+  });
 
   return (
     <>
@@ -56,7 +89,7 @@ export function EnvironmentRig() {
 
       {/* The field. Laid flat beneath the working volume and masked to a soft
           circle, so it has no visible edge to give the illusion away. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3.15, -1.2]}>
+      <mesh ref={floorRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -3.15, -1.2]}>
         <planeGeometry args={[46, 46]} />
         <meshBasicMaterial
           map={field}
@@ -68,7 +101,7 @@ export function EnvironmentRig() {
         />
       </mesh>
 
-      <mesh position={[0, 0, ENVIRONMENT.backdrop.z]}>
+      <mesh ref={backdropRef} position={[0, 0, ENVIRONMENT.backdrop.z]}>
         <planeGeometry args={[ENVIRONMENT.backdrop.width, ENVIRONMENT.backdrop.height]} />
         <meshStandardMaterial map={backdrop} roughness={1} metalness={0} envMapIntensity={0.15} />
       </mesh>

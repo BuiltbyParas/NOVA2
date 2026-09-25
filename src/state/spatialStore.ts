@@ -7,6 +7,8 @@ import type { TaskId } from '../types/context';
 import { APPS, APP_ORDER } from '../data/apps';
 import { WORKSPACES } from '../data/workspaces';
 import { WORKSPACE_TASK } from '../data/tasks';
+import type { LayerDirection, LayerState } from '../types/layer';
+import { DEFAULT_LAYERS, layerForApp } from '../data/layers';
 
 export type Quality = 'high' | 'low';
 
@@ -73,6 +75,9 @@ interface SpatialState {
   /** Developer-only context inspector. Never shown in a production build. */
   contextDebug: boolean;
 
+  /** Phase 13: Centralized spatial application layer state */
+  layer: LayerState;
+
   // --- mutators (called by the command bus, never by components directly) ---
   patchWindow: (id: string, patch: Partial<SpatialWindow>) => void;
   setTransform: (
@@ -97,6 +102,12 @@ interface SpatialState {
   toggleVisionDebug: (open?: boolean) => void;
   toggleContextDebug: (open?: boolean) => void;
   setPresentation: (presentation: boolean) => void;
+
+  /** Phase 13: Layer navigation mutators */
+  navigateLayer: (direction: LayerDirection) => boolean;
+  goToLayer: (target: number | string) => boolean;
+  setLayerProgress: (progress: number) => void;
+  completeLayerTransition: () => void;
 }
 
 const ENTRY_STAGGER_MS = 110;
@@ -173,6 +184,16 @@ export const useSpatialStore = create<SpatialState>((set, get) => ({
   visionDebug: false,
   visionError: null,
   contextDebug: false,
+
+  layer: {
+    layers: DEFAULT_LAYERS,
+    currentLayerIndex: 0,
+    targetLayerIndex: 0,
+    phase: 'idle',
+    direction: null,
+    progress: 0,
+    transitionStartedAt: 0,
+  },
 
   patchWindow: (id, patch) =>
     set((state) => {
@@ -257,6 +278,12 @@ export const useSpatialStore = create<SpatialState>((set, get) => ({
     }),
 
   openWindow: (app) => {
+    // If the app belongs to another layer, switch to that layer seamlessly
+    const targetLayerIdx = layerForApp(app);
+    if (get().layer.currentLayerIndex !== targetLayerIdx && get().layer.phase === 'idle') {
+      get().goToLayer(targetLayerIdx);
+    }
+
     const existing = get().windows[app];
     if (existing) {
       get().setMinimized(app, false);
@@ -348,6 +375,113 @@ export const useSpatialStore = create<SpatialState>((set, get) => ({
       // reopen them, and neither turns the camera itself off.
       if (!presentation) return { presentation };
       return { presentation, visionDebug: false, contextDebug: false };
+    }),
+
+  navigateLayer: (direction: LayerDirection) => {
+    const state = get();
+    // Transition locking: ignore during transition or settling
+    if (state.layer.phase !== 'idle') return false;
+
+    const current = state.layer.currentLayerIndex;
+    const maxIndex = state.layer.layers.length - 1;
+    const delta = direction === 'next' ? 1 : -1;
+    const target = current + delta;
+
+    // Strict boundary clamping: first layer + prev or last layer + next stays
+    if (target < 0 || target > maxIndex) return false;
+
+    set({
+      layer: {
+        ...state.layer,
+        targetLayerIndex: target,
+        phase: 'transitioning',
+        direction,
+        progress: 0,
+        transitionStartedAt: performance.now(),
+      },
+    });
+
+    const targetLayer = state.layer.layers[target];
+    if (targetLayer) {
+      get().notify(`Layer ${target + 1} · ${targetLayer.name}`);
+    }
+
+    return true;
+  },
+
+  goToLayer: (target: number | string) => {
+    const state = get();
+    if (state.layer.phase !== 'idle') return false;
+
+    let targetIndex = -1;
+    if (typeof target === 'number') {
+      targetIndex = target;
+    } else {
+      const lower = target.trim().toLowerCase();
+      targetIndex = state.layer.layers.findIndex(
+        (l) => l.id.toLowerCase() === lower || l.name.toLowerCase() === lower
+      );
+    }
+
+    if (targetIndex < 0 || targetIndex >= state.layer.layers.length) return false;
+    if (targetIndex === state.layer.currentLayerIndex) return false;
+
+    const direction: LayerDirection = targetIndex > state.layer.currentLayerIndex ? 'next' : 'previous';
+
+    set({
+      layer: {
+        ...state.layer,
+        targetLayerIndex: targetIndex,
+        phase: 'transitioning',
+        direction,
+        progress: 0,
+        transitionStartedAt: performance.now(),
+      },
+    });
+
+    const targetLayer = state.layer.layers[targetIndex];
+    if (targetLayer) {
+      get().notify(`Layer ${targetIndex + 1} · ${targetLayer.name}`);
+    }
+
+    return true;
+  },
+
+  setLayerProgress: (progress: number) =>
+    set((state) => ({
+      layer: {
+        ...state.layer,
+        progress: Math.min(1, Math.max(0, progress)),
+      },
+    })),
+
+  completeLayerTransition: () =>
+    set((state) => {
+      const newIndex = state.layer.targetLayerIndex;
+      const targetLayer = state.layer.layers[newIndex];
+      // Focus management: If current focused window is not in target layer, blur or refocus
+      let focusedId = state.focusedId;
+      if (focusedId && targetLayer) {
+        const win = state.windows[focusedId];
+        if (win && !targetLayer.applications.includes(win.app)) {
+          // Find first open app in target layer or blur
+          const candidate = targetLayer.applications.find((app) => state.windows[app]);
+          focusedId = candidate ? candidate : null;
+        }
+      }
+
+      return {
+        focusedId,
+        layer: {
+          ...state.layer,
+          currentLayerIndex: newIndex,
+          targetLayerIndex: newIndex,
+          phase: 'idle',
+          direction: null,
+          progress: 0,
+          transitionStartedAt: 0,
+        },
+      };
     }),
 }));
 

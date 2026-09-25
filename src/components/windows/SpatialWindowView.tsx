@@ -89,6 +89,7 @@ export function SpatialWindowView({ id }: { id: string }) {
       corePosition: store.core.position,
       hoveredId: cursor.hoveredId,
       now,
+      layerState: store.layer,
     });
 
     // Being dragged means the window must track the pointer closely; otherwise it

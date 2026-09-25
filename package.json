@@ -8,7 +8,7 @@
     "dev:frontend-only": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "tsx src/systems/command/verifyBuiltinCommands.ts && tsx src/vision/verifyVision.ts && tsx src/systems/context/verifyContext.ts && tsx src/systems/memory/verifyMemory.ts && tsx src/systems/voice/verifyVoice.ts && tsx src/systems/multimodal/verifyMultimodal.ts && tsx src/systems/native/verifyNative.ts && tsx src/systems/native/verifyNativeAction.ts && tsx src/systems/native/verifyApplicationCatalog.ts && tsx src/systems/multimodal/verifyGestureIntent.ts && tsx src/systems/native/verifyNativeSpatialSync.ts",
+    "test": "tsx src/systems/command/verifyBuiltinCommands.ts && tsx src/vision/verifyVision.ts && tsx src/systems/context/verifyContext.ts && tsx src/systems/memory/verifyMemory.ts && tsx src/systems/voice/verifyVoice.ts && tsx src/systems/multimodal/verifyMultimodal.ts && tsx src/systems/native/verifyNative.ts && tsx src/systems/native/verifyNativeAction.ts && tsx src/systems/native/verifyApplicationCatalog.ts && tsx src/systems/multimodal/verifyGestureIntent.ts && tsx src/systems/native/verifyNativeSpatialSync.ts && tsx src/systems/layer/verifySpatialLayers.ts",
     "preview": "vite preview",
     "test:builtins": "tsx src/systems/command/verifyBuiltinCommands.ts",
     "test:vision": "tsx src/vision/verifyVision.ts",
@@ -20,7 +20,8 @@
     "test:native-action": "tsx src/systems/native/verifyNativeAction.ts",
     "test:catalog": "tsx src/systems/native/verifyApplicationCatalog.ts",
     "test:gesture": "tsx src/systems/multimodal/verifyGestureIntent.ts",
-    "test:sync": "tsx src/systems/native/verifyNativeSpatialSync.ts"
+    "test:sync": "tsx src/systems/native/verifyNativeSpatialSync.ts",
+    "test:layer": "tsx src/systems/layer/verifySpatialLayers.ts"
   },
   "dependencies": {
     "@google/genai": "^2.23.0",

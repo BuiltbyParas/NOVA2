@@ -183,6 +183,16 @@ export interface GeminiContext {
    * themselves, and it never resolves which one — NOVA does that.
    */
   savedMemories?: Array<{ id: string; name: string; workspace: WorkspaceId }>;
+  /**
+   * Phase 13: Controlled projection of current spatial layer.
+   * Exposes only clean names, never positions, coordinates or internal handles.
+   */
+  currentLayer?: {
+    id: string;
+    name: string;
+    applications: string[];
+  };
+  availableLayers?: Array<{ id: string; name: string }>;
 }
 
 /** How a reference was resolved, kept so ambiguity can be explained honestly. */

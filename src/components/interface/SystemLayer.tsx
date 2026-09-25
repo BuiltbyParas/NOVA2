@@ -6,6 +6,7 @@ import { dispatch, subscribeToCommands } from '../../systems/command/commandBus'
 import { StatusHUD } from './StatusHUD';
 import { CommandDeck } from './CommandDeck';
 import { VoicePanel } from './VoicePanel';
+import { LayerIndicator } from './LayerIndicator';
 
 const HINTS = [
   ['drag', 'move a surface'],
@@ -138,6 +139,7 @@ export function SystemLayer() {
     <>
       <Identity />
       <StatusHUD />
+      <LayerIndicator />
       <CommandDeck />
       <VoicePanel />
       <Notice />

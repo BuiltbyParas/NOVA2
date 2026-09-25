@@ -86,7 +86,10 @@ export type NovaCommand =
   | { action: 'memory-save'; name: string }
   | { action: 'memory-restore'; id: string }
   | { action: 'memory-delete'; id: string }
-  | { action: 'memory-list'; open?: boolean };
+  | { action: 'memory-list'; open?: boolean }
+  /** Navigate spatial application layers */
+  | { action: 'layer'; direction: 'next' | 'previous' }
+  | { action: 'layer-go'; target: number | string };
 
 /**
  * Where a command came from. Kept on the envelope so the Core can react

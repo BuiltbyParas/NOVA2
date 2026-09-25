@@ -77,6 +77,21 @@ export function interpret(input: string): Interpretation {
   if (!text) return { commands: [], understood: false };
   if (PATH_OR_ARGUMENT.test(text)) return { commands: [], understood: false };
 
+  // Phase 13: Spatial application layer navigation via text/voice
+  if (/\b(next layer|forward layer|layer next)\b/.test(text)) {
+    return { commands: [{ action: 'layer', direction: 'next' }], understood: true };
+  }
+  if (/\b(previous layer|prev layer|back layer|layer (back|prev|previous))\b/.test(text)) {
+    return { commands: [{ action: 'layer', direction: 'previous' }], understood: true };
+  }
+  const layerGoMatch = /\b(?:layer|go to layer|show layer)\s+(\w+)\b/.exec(text);
+  if (layerGoMatch) {
+    const raw = layerGoMatch[1];
+    const num = parseInt(raw, 10);
+    const target = isNaN(num) ? raw : num - 1; // 1-based user input to 0-based index
+    return { commands: [{ action: 'layer-go', target }], understood: true };
+  }
+
   // Workspace switching, e.g. "open development workspace", "switch to study".
   if (/\b(workspace|switch|go to|enter|mode)\b/.test(text)) {
     const workspace = findWorkspace(text);

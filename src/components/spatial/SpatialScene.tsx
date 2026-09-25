@@ -11,6 +11,7 @@ import { CameraRig } from './CameraRig';
 import { EnvironmentRig } from './EnvironmentRig';
 import { InteractionDriver } from './InteractionDriver';
 import { PerformanceGovernor } from './PerformanceGovernor';
+import { LayerTransitionGovernor } from './LayerTransitionGovernor';
 import { CSS3DRenderPass } from './CSS3DRenderPass';
 
 function WindowLayer() {
@@ -62,6 +63,7 @@ export function SpatialScene() {
         <WindowLayer />
         <InteractionDriver />
         <PerformanceGovernor />
+        <LayerTransitionGovernor />
         {/* Must be last: it owns both render passes. */}
         <CSS3DRenderPass />
       </Canvas>

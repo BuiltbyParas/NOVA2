@@ -11,6 +11,7 @@ import type { AppType, SpatialWindow } from '../../types/window';
 import type { ContextSnapshot } from '../context/contextGraph';
 import { APPS } from '../../data/apps';
 import { WORKSPACES } from '../../data/workspaces';
+import { spatial } from '../../state/spatialStore';
 
 /**
  * Turning a reading of the world into something that survives a reload, and back.
@@ -69,6 +70,13 @@ export function captureMemorySnapshot(graph: NovaContextGraph): MemorySnapshot {
     windows,
     relationships,
     recent: [...graph.recent],
+    layerIndex: (() => {
+      try {
+        return spatial()?.layer?.currentLayerIndex ?? 0;
+      } catch {
+        return 0;
+      }
+    })(),
   };
 }
 

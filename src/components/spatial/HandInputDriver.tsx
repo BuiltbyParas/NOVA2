@@ -3,7 +3,6 @@ import { useSpatialStore } from '../../state/spatialStore';
 import { inputRouter } from '../../systems/input/inputRouter';
 import { createHandInputSource } from '../../systems/input/handInputSource';
 import { handTracker } from '../../vision/handTracker';
-import { WORKSPACE_ORDER } from '../../data/workspaces';
 import { dispatch } from '../../systems/command/commandBus';
 
 /**
@@ -60,13 +59,10 @@ export function HandInputDriver() {
 
     const unsubSwipe = handTracker.onFrame((frame) => {
       if (!frame || !frame.swipeDirection) return;
-      const state = useSpatialStore.getState();
-      const current = WORKSPACE_ORDER.indexOf(state.workspace);
-      // Swiping left moves to next workspace; swiping right moves to previous workspace
-      const step = frame.swipeDirection === 'left' ? 1 : -1;
-      // The recogniser owns the swipe cooldown, so this fires once per swipe.
-      const next = WORKSPACE_ORDER[(current + step + WORKSPACE_ORDER.length) % WORKSPACE_ORDER.length];
-      dispatch({ action: 'workspace', target: next }, 'gesture');
+      // Swiping left moves to next layer; swiping right moves to previous layer
+      const direction = frame.swipeDirection === 'left' ? 'next' : 'previous';
+      // The recogniser owns the swipe cooldown, and command bus/spatialStore enforces transition locking.
+      dispatch({ action: 'layer', direction }, 'gesture');
     });
 
     return () => {

@@ -17,6 +17,8 @@ import type {
 import { APPS } from '../../data/apps';
 import { WORKSPACES, WORKSPACE_ORDER } from '../../data/workspaces';
 import { APP_ROLES, TASKS, TASK_ORDER, WORKSPACE_TASK } from '../../data/tasks';
+import { spatial } from '../../state/spatialStore';
+import { DEFAULT_LAYERS } from '../../data/layers';
 import { resolveReferent } from '../multimodal/referentResolution';
 import {
   deriveRelationships,
@@ -376,5 +378,24 @@ export function buildGeminiContext(
       windows: task.windowIds,
     })),
     ...(savedMemories.length ? { savedMemories } : {}),
+    currentLayer: (() => {
+      try {
+        const store = spatial();
+        const activeIdx = store.layer?.currentLayerIndex ?? 0;
+        const activeLayer = (store.layer?.layers ?? DEFAULT_LAYERS)[activeIdx];
+        if (!activeLayer) return undefined;
+        return {
+          id: activeLayer.id,
+          name: activeLayer.name,
+          applications: activeLayer.applications.map((app) => APPS[app]?.name ?? app),
+        };
+      } catch {
+        return undefined;
+      }
+    })(),
+    availableLayers: (spatial()?.layer?.layers ?? DEFAULT_LAYERS).map((l) => ({
+      id: l.id,
+      name: l.name,
+    })),
   };
 }
