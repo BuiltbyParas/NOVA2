@@ -18,6 +18,10 @@ import {
   identityOf,
   setSystemAdapter,
 } from './systemAdapter';
+import { openApplications } from '../testing/openApplications';
+
+// Phase 12: NOVA starts with no windows; these checks need NOVA's applications open.
+openApplications();
 
 /**
  * Phase 8 verification.

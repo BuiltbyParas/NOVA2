@@ -73,10 +73,23 @@ export function presentWindow(
 
   if (win.lifecycle === 'entering') {
     const progress = easeOutQuint((now - win.lifecycleAt) / ENTRY_TRANSITION_MS);
-    opacity = progress;
-    // Windows establish themselves by settling forward out of the depth.
-    position = { ...position, z: position.z - (1 - progress) * 0.9 };
-    scale *= 0.93 + 0.07 * progress;
+    opacity = Math.min(1, progress * 1.6);
+    if (win.origin) {
+      // Phase 12: out of the NOVA Core — from a compressed point at its heart,
+      // along a path that swings slightly towards the viewer, to its place.
+      const o = win.origin;
+      const lift = Math.sin(progress * Math.PI) * 0.5;
+      position = {
+        x: o.x + (position.x - o.x) * progress,
+        y: o.y + (position.y - o.y) * progress,
+        z: o.z + (position.z - o.z) * progress + lift,
+      };
+      scale *= 0.08 + 0.92 * progress;
+    } else {
+      // Windows establish themselves by settling forward out of the depth.
+      position = { ...position, z: position.z - (1 - progress) * 0.9 };
+      scale *= 0.93 + 0.07 * progress;
+    }
   } else if (win.lifecycle === 'closing') {
     const raw = (now - win.lifecycleAt) / CLOSE_TRANSITION_MS;
     const progress = smoothstep(raw);

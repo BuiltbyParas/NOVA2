@@ -4,6 +4,9 @@ import { useSpatialStore } from '../../state/spatialStore';
 import { APP_ORDER } from '../../data/apps';
 import { WORKSPACE_ORDER } from '../../data/workspaces';
 import { voice } from '../voice/voiceStore';
+import { toggleIntelligence } from '../intelligence/intelligenceSession';
+import { requestPortal, togglePortal } from '../portal/portal';
+import { interaction } from '../interaction/interactionSystem';
 
 /**
  * Keyboard as a command producer.
@@ -37,6 +40,7 @@ export function useKeyboardCommands() {
           return;
         }
         if (state.commandOpen) dispatch({ action: 'command', open: false }, 'keyboard');
+        else if (state.portal.open) requestPortal(false, 'keyboard', interaction.activationOwner());
         else dispatch({ action: 'blur' }, 'keyboard');
         return;
       }
@@ -84,6 +88,12 @@ export function useKeyboardCommands() {
         dispatch({ action: 'close', target: state.focusedId }, 'keyboard');
         return;
       }
+      if (key === 'o' || event.key === ' ') {
+        // The NOVA portal (Phase 12): the same request the pointer and a hand make.
+        event.preventDefault();
+        togglePortal('keyboard', interaction.activationOwner());
+        return;
+      }
       if (key === 'a') {
         dispatch({ action: 'arrange' }, 'keyboard');
         return;
@@ -99,6 +109,12 @@ export function useKeyboardCommands() {
         const heard = voice().state;
         const speaking = heard === 'listening' || heard === 'starting';
         dispatch({ action: 'voice-input', mode: speaking ? 'stop' : 'start' }, 'keyboard');
+        return;
+      }
+      if (key === 'i') {
+        // The Intelligence surface is interface, like presentation mode below:
+        // opening it changes nothing spatial, so it is not a command.
+        toggleIntelligence();
         return;
       }
       if (key === 'p') {

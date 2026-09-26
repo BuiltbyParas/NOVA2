@@ -17,6 +17,10 @@ import {
   voiceInputSource,
 } from './voiceInputSource';
 import { useVoiceStore, voice } from './voiceStore';
+import { openApplications } from '../testing/openApplications';
+
+// Phase 12: NOVA starts with no windows; these checks need NOVA's applications open.
+openApplications();
 
 /**
  * Phase 6 verification.

@@ -36,6 +36,11 @@ export interface SpatialWindow {
   lifecycle: WindowLifecycle;
   /** Timestamp (ms) the current lifecycle phase began, used to drive its transition. */
   lifecycleAt: number;
+  /**
+   * Where the window came out of, if anywhere (Phase 12): the NOVA Core. Its
+   * entering transition travels from here to its place. Presentation only.
+   */
+  origin?: SpatialPosition;
 }
 
 /** A transform without identity — what a workspace layout stores for each app. */

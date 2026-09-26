@@ -6,6 +6,7 @@ import { COMMAND_EXAMPLES } from '../../systems/command/commandParser';
 import { routeUtterance } from '../../systems/command/intentRouter';
 import { useVoiceStore } from '../../systems/voice/voiceStore';
 import { useVoiceInput } from '../../systems/voice/voicePipeline';
+import { converse, useIntelligenceStore } from '../../systems/intelligence/intelligenceSession';
 import type { ReferenceCandidate } from '../../types/context';
 
 /**
@@ -27,6 +28,7 @@ export function CommandLine() {
   const interim = useVoiceStore((state) => state.interimTranscript);
   const spoken = useVoiceStore((state) => state.transcript);
   const voiceError = useVoiceStore((state) => state.error);
+  const conversing = useIntelligenceStore((state) => state.open);
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +80,12 @@ export function CommandLine() {
   // Words arriving by voice take exactly the path words arriving by keyboard
   // take. `run` is passed straight through — there is no voice branch inside it.
   useVoiceInput(async (text) => {
+    // While the Intelligence surface is open, a spoken sentence is part of that
+    // conversation. It is still the one voice connection — only the handler it
+    // reaches differs — and anything NOVA does as a result goes through
+    // `routeUtterance` all the same.
+    if (useIntelligenceStore.getState().open) return converse(text, 'voice');
+
     const result = await routeUtterance(text, 'voice');
     if (result.clarification) {
       setQuestion({
@@ -142,7 +150,7 @@ export function CommandLine() {
 
   return (
     <AnimatePresence>
-      {(open || voiceActive) && (
+      {(open || (voiceActive && !conversing)) && (
         // The anchor does the centring; the motion element only animates, because
         // an animated transform would otherwise replace the centring translate.
         <div className="command-anchor">

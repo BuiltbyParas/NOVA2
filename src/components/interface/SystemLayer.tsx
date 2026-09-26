@@ -5,9 +5,13 @@ import type { NoticeKind } from '../../state/spatialStore';
 import { dispatch, subscribeToCommands } from '../../systems/command/commandBus';
 import { StatusHUD } from './StatusHUD';
 import { CommandDeck } from './CommandDeck';
+import { PortalLayer } from './PortalLayer';
 import { VoicePanel } from './VoicePanel';
+import { IntelligenceSurface } from './IntelligenceSurface';
+import { SpatialCoreLabel } from './SpatialCoreLabel';
 
 const HINTS = [
+  ['O', 'applications'],
   ['drag', 'move a surface'],
   ['corner', 'resize'],
   ['alt + drag', 'rotate'],
@@ -15,6 +19,7 @@ const HINTS = [
   ['1 – 5', 'focus'],
   ['V', 'vision mode'],
   ['S', 'speak'],
+  ['I', 'ask NOVA'],
   ['P', 'presentation'],
   ['⌘K', 'command line'],
 ];
@@ -136,10 +141,13 @@ function Identity() {
 export function SystemLayer() {
   return (
     <>
+      <SpatialCoreLabel />
       <Identity />
       <StatusHUD />
+      <PortalLayer />
       <CommandDeck />
       <VoicePanel />
+      <IntelligenceSurface />
       <Notice />
       <Hints />
     </>

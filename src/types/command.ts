@@ -68,6 +68,11 @@ export type NovaCommand =
   | { action: 'core'; state: CoreState }
   /** Open or close the line where the user speaks to NOVA in words. */
   | { action: 'command'; open: boolean }
+  /**
+   * Open or close the NOVA application portal (Phase 12). Explicit, never a
+   * toggle, so a repeated activation is harmless.
+   */
+  | { action: 'portal'; open: boolean }
   /** Turn webcam vision mode on or off. */
   | { action: 'vision'; active?: boolean }
   /**
