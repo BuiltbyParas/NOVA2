@@ -63,7 +63,7 @@ class HandTracker {
       if (!this.landmarker) {
         let visionWasm;
         try {
-          visionWasm = await FilesetResolver.forVisionTasks('/wasm');
+          visionWasm = await FilesetResolver.forVisionTasks(`${import.meta.env.BASE_URL}wasm`);
         } catch {
           // Fallback to official CDN if local wasm routing encounters issues
           visionWasm = await FilesetResolver.forVisionTasks(
@@ -73,7 +73,7 @@ class HandTracker {
 
         this.landmarker = await HandLandmarker.createFromOptions(visionWasm, {
           baseOptions: {
-            modelAssetPath: '/models/hand_landmarker.task',
+            modelAssetPath: `${import.meta.env.BASE_URL}models/hand_landmarker.task`,
             delegate: 'GPU',
           },
           runningMode: 'VIDEO',
