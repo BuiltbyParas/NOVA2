@@ -165,9 +165,21 @@ export function presentWindow(
     const raw = (now - win.lifecycleAt) / CLOSE_TRANSITION_MS;
     const closeProgress = smoothstep(raw);
     opacity *= 1 - closeProgress;
-    // Closing recedes into the environment rather than fading on the spot.
-    position = { ...position, z: position.z - closeProgress * 0.8, y: position.y - closeProgress * 0.12 };
-    scale *= 1 - 0.14 * closeProgress;
+    if (win.origin) {
+      // Phase 12: an application that came out of the Core folds back into it.
+      const o = win.origin;
+      const t = closeProgress * closeProgress;
+      position = {
+        x: position.x + (o.x - position.x) * t,
+        y: position.y + (o.y - position.y) * t,
+        z: position.z + (o.z - position.z) * t,
+      };
+      scale *= 1 - 0.92 * closeProgress;
+    } else {
+      // Closing recedes into the environment rather than fading on the spot.
+      position = { ...position, z: position.z - closeProgress * 0.8, y: position.y - closeProgress * 0.12 };
+      scale *= 1 - 0.14 * closeProgress;
+    }
     expired = raw >= 1;
   }
 

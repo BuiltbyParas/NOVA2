@@ -3087,25 +3087,14 @@ button {
 }
 
 /* ---------------------------------------------------------------------------
-   Phase 12 — the NOVA application portal.
-
-   The applications are drawn at positions the scene projects each frame, so
-   every element here is anchored at the top-left and moved by one transform.
-   No backdrop blur: five moving blurs would re-filter the scene every frame on
-   modest hardware, so the glass is simply a little more opaque.
+   Phase 12 — the NOVA application portal's glow. The applications themselves
+   are NOVA's real spatial windows; only the Core's light is drawn here.
    --------------------------------------------------------------------------- */
 .portal {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 6;
-}
-
-.portal__apps {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  pointer-events: none;
 }
 
 /* The Core gathering and releasing the bloom: warm light, as the Core's light is. */
@@ -3128,82 +3117,132 @@ button {
   will-change: transform, opacity;
 }
 
-/* A thread of light from the Core to each application in flight. 1px long,
-   scaled to length; it fades as the application settles. */
-.portal__trail {
+
+/* ---------------------------------------------------------------------------
+   NOVA Demo Mode — "Explore NOVA": the trigger beneath the workspace rail and
+   the caption line at the top of the room while the showcase plays.
+   --------------------------------------------------------------------------- */
+.nova-interface .demo-trigger {
   position: absolute;
-  left: 0;
-  top: -0.5px;
-  width: 1px;
-  height: 1px;
-  transform-origin: 0 50%;
-  background: linear-gradient(90deg, rgba(246, 233, 210, 0.9), rgba(217, 224, 234, 0.35) 60%, transparent);
-  opacity: 0;
-  will-change: transform, opacity;
+  left: 18px;
+  top: 108px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 224, 234, 0.14);
+  background: rgba(12, 18, 28, 0.72);
+  color: var(--env-text-secondary);
+  font: 600 10px/1 var(--font-sans);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: color 200ms var(--ease-spatial), border-color 200ms var(--ease-spatial);
 }
 
-.nova-interface .portal__item {
+.nova-interface .demo-trigger:hover,
+.nova-interface .demo-trigger:focus-visible {
+  outline: none;
+  color: var(--env-text);
+  border-color: rgba(127, 216, 230, 0.55);
+}
+
+/* The glyph: the Core's warm light, gently breathing — "there is something to see". */
+.demo-trigger__glyph {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f6e9d2;
+  box-shadow: 0 0 0 3px rgba(246, 233, 210, 0.12), 0 0 8px rgba(233, 180, 124, 0.6);
+  animation: demo-breathe 2.6s ease-in-out infinite;
+}
+
+.nova-interface .demo-trigger[data-running] {
+  color: var(--env-text);
+  border-color: rgba(127, 216, 230, 0.45);
+}
+
+.demo-trigger[data-running] .demo-trigger__glyph {
+  border-radius: 1px;
+  animation: none;
+}
+
+@keyframes demo-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* The caption: one line at the top of the room, a hairline of progress beneath. */
+.demo-caption {
+  /* Beside the NOVA mark, in the free band between the workspace chrome on the
+     left and the right-hand column (status panel, Intelligence Surface), so it
+     never covers either at any window size. */
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 344px;
+  top: 22px;
+  max-width: calc(100vw - 344px - 424px);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 16px 7px 7px;
-  border-radius: 999px;
-  border: 1px solid rgba(217, 224, 234, 0.16);
-  background: linear-gradient(180deg, rgba(24, 33, 48, 0.9), rgba(12, 18, 28, 0.88));
-  box-shadow:
-    inset 0 1px 0 rgba(217, 224, 234, 0.12),
-    0 10px 28px rgba(3, 6, 12, 0.45);
+  gap: 14px;
+  padding: 9px 16px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(217, 224, 234, 0.1);
+  background: rgba(10, 15, 24, 0.72);
+  box-shadow: 0 16px 40px rgba(2, 5, 10, 0.4);
   color: var(--env-text);
-  font: 500 13px/1 var(--font-sans);
-  letter-spacing: 0.02em;
   white-space: nowrap;
-  opacity: 0;
+  overflow: hidden;
   pointer-events: none;
-  will-change: transform, opacity;
-  transition:
-    border-color 160ms var(--ease-spatial),
-    box-shadow 160ms var(--ease-spatial),
-    background 160ms var(--ease-spatial);
 }
 
-.portal__icon {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: rgba(217, 224, 234, 0.92);
-  background: radial-gradient(circle at 50% 35%, rgba(217, 224, 234, 0.16), rgba(217, 224, 234, 0.04));
-  box-shadow: inset 0 0 0 1px rgba(217, 224, 234, 0.14);
+.demo-caption__step,
+.demo-trigger__key {
+  font: 500 9.5px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--env-text-tertiary);
 }
 
-.portal__name {
-  padding-right: 2px;
+.demo-caption__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 400 13px/1.2 var(--font-sans);
+  letter-spacing: 0.01em;
 }
 
-/* Highlight and focus: cyan, because cyan means you are interacting with the space. */
-.nova-interface .portal__item[data-highlighted='true'],
-.nova-interface .portal__item:focus-visible {
-  outline: none;
-  border-color: rgba(127, 216, 230, 0.7);
-  background: linear-gradient(180deg, rgba(28, 42, 58, 0.94), rgba(14, 22, 33, 0.92));
-  box-shadow:
-    inset 0 1px 0 rgba(127, 216, 230, 0.2),
-    0 0 0 3px rgba(127, 216, 230, 0.14),
-    0 14px 34px rgba(3, 6, 12, 0.5);
+.demo-caption__step {
+  flex-shrink: 0;
 }
 
-.nova-interface .portal__item[data-highlighted='true'] .portal__icon,
-.nova-interface .portal__item:focus-visible .portal__icon {
-  color: #e9f8fb;
-  box-shadow: inset 0 0 0 1px rgba(127, 216, 230, 0.5);
+.demo-trigger__key {
+  margin-left: 2px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(217, 224, 234, 0.16);
+  letter-spacing: 0.08em;
+}
+
+.demo-caption__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 1px;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--demo-progress, 0));
+  background: linear-gradient(90deg, rgba(127, 216, 230, 0.2), rgba(127, 216, 230, 0.8));
+  transition: transform 700ms var(--ease-spatial);
+}
+
+/* While the demo plays, its caption speaks for NOVA; the usual notices
+   (which appear in the same band) stand aside until it ends. */
+:root[data-demo] .notice-anchor {
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .portal__trail {
-    display: none;
+  .demo-trigger__glyph {
+    animation: none;
   }
 }

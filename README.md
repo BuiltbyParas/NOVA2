@@ -67,11 +67,11 @@ how the phases stack into one system is in [docs/ARCHITECTURE.md](docs/ARCHITECT
 **Phase 12 is the current implementation state.** NOVA opens on a clean
 spatial environment with one entry point: the **NOVA portal**, the glass Core at
 the bottom centre. Click it, air click it (double pinch), or press `O`, and the
-Core gathers light and blooms NOVA's applications out into the room — each
-flying from the Core's heart to a seat at its own depth. Choose one and its
-window comes out of the Core; dismiss and they fold back into it. Selection goes
-through the ordinary command path (`open <name>` → `routeUtterance`). `npm test`
-runs 98 portal assertions. See [docs/phases/phase-12.md](docs/phases/phase-12.md).
+Core gathers light and NOVA's real spatial windows come out of it one after
+another, each flying from the Core's heart to its place in the room — ordinary
+windows you drag, resize, pinch and close. Activate the Core again and they fold
+back into it. Every window comes through the ordinary command path. `npm test`
+runs 66 portal assertions. See [docs/phases/phase-12.md](docs/phases/phase-12.md).
 
 **Phase 11 (with 11B–11E) is complete.** The
 environment is a darkened spatial room in deep blue-grey, generated entirely in

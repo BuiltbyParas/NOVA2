@@ -1,21 +1,23 @@
 /**
  * Phase 12 — the NOVA application portal.
  *
- * Deterministic: the portal's phases and motion are pure functions of its state
- * and an explicit time, so nothing here waits on an animation. Activation is
- * exercised through the real interaction system with a real camera and a real
- * raycast target, selection through the real command router and bus.
+ * The portal reveals NOVA's *real* spatial windows: opening it issues ordinary
+ * `open` commands, so what comes out of the Core is dragged, resized, pinched,
+ * focused and closed by the window system that always did that. Deterministic:
+ * phases are pure functions of state and an explicit time; activation runs
+ * through the real interaction system with a real camera and raycast.
  */
-import { Mesh, PerspectiveCamera, SphereGeometry } from 'three';
+import { Mesh, PerspectiveCamera, PlaneGeometry, SphereGeometry } from 'three';
 import type { NovaCommand } from '../../types/command';
-import { APP_ORDER, APPS, genericAppFor } from '../../data/apps';
+import { APP_ORDER } from '../../data/apps';
+import { layerForApp } from '../../data/layers';
 import { useSpatialStore } from '../../state/spatialStore';
-import { subscribeToCommands } from '../command/commandBus';
+import { dispatch, subscribeToCommands, CLOSE_TRANSITION_MS } from '../command/commandBus';
 import { cursor, interaction } from '../interaction/interactionSystem';
 import { CORE_TARGET_ID, registerTarget, unregisterTarget } from '../interaction/targetRegistry';
 import { presentWindow } from '../window/windowPresentation';
 import { pulseProgress, startAmbience } from '../environment/ambience';
-import { PORTAL_CLAIM, requestPortal, selectPortalApp, togglePortal } from './portal';
+import { PORTAL_CLAIM, requestPortal, togglePortal } from './portal';
 import {
   PORTAL_CLOSED,
   PORTAL_CLOSE_MS,
@@ -24,20 +26,16 @@ import {
   nextPortalState,
   portalApps,
   portalPhase,
-  portalPose,
   portalProgress,
-  portalSeat,
-  portalStillPose,
-  portalTravel,
-  portalUtterance,
-  type PortalPose,
+  portalRevealDelay,
 } from './portalModel';
 
-/** Files are read the way the other suites read them (see verifyEnvironment). */
 const nodeFs = 'node:fs';
 const { readFileSync } = (await import(nodeFs)) as {
   readFileSync: (path: string, encoding: string) => string;
 };
+// The bus schedules a closed window's removal on `window.setTimeout`.
+(globalThis as unknown as { window?: typeof globalThis }).window ??= globalThis;
 
 let failures = 0;
 let checks = 0;
@@ -50,310 +48,257 @@ function assert(condition: boolean, message: string) {
 function pass(message: string) {
   console.log(`  ✓ ${message}`);
 }
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 const store = () => useSpatialStore.getState();
 const close = (a: number, b: number, e = 1e-6) => Math.abs(a - b) < e;
+const live = () => Object.values(store().windows).filter((w) => w.lifecycle !== 'closing');
+/** Closed windows are removed by the bus's timer; tests clear them directly. */
+const sweep = () => {
+  for (const [id, win] of Object.entries(store().windows)) if (win.lifecycle === 'closing') store().removeWindow(id);
+};
+const finishLayer = () => {
+  if (store().layer.phase !== 'idle') store().completeLayerTransition();
+};
 
 console.log('\n=== NOVA Phase 12 · Application Portal ===\n');
 
-// --- 1. the default state ---------------------------------------------------------------
+// --- 1. the default state -------------------------------------------------------------
 
 console.log('--- The clean first screen ---');
 {
   assert(Object.keys(store().windows).length === 0, 'NOVA starts with no application windows open');
-  assert(store().order.length === 0, 'and nothing in the recency order');
   assert(store().portal.open === false, 'the portal starts closed');
-  assert(portalPhase(store().portal, performance.now()) === 'closed', "and its phase is 'closed'");
-  pass('The first screen is the environment and the portal, not five windows');
+  assert(portalPhase(store().portal, performance.now()) === 'closed', "its phase is 'closed'");
+  pass('The first screen is the environment and the portal');
 }
 
-// --- 2. the state model -----------------------------------------------------------------
+// --- 2. the state model ------------------------------------------------------------------
 
 console.log('--- Portal state transitions ---');
 {
   const t0 = 1000;
   const opened = nextPortalState(PORTAL_CLOSED, true, t0);
-  assert(opened.open && opened.at === t0 && opened.from === 0, 'opening records the intent, the time, and where it started');
-  assert(portalPhase(opened, t0) === 'opening', "just after opening, the phase is 'opening'");
-  assert(portalPhase(opened, t0 + PORTAL_OPEN_MS / 2) === 'opening', 'half-way through, still opening');
-  assert(portalPhase(opened, t0 + PORTAL_OPEN_MS) === 'open', "after the bloom, the phase is 'open'");
+  assert(portalPhase(opened, t0) === 'opening' && portalPhase(opened, t0 + PORTAL_OPEN_MS) === 'open', 'closed → opening → open');
   assert(close(portalProgress(opened, t0 + PORTAL_OPEN_MS / 2), 0.5), 'progress runs linearly with time');
-
-  let last = -1;
-  let monotonic = true;
-  for (let t = 0; t <= PORTAL_OPEN_MS; t += 50) {
-    const p = portalProgress(opened, t0 + t);
-    if (p < last) monotonic = false;
-    last = p;
-  }
-  assert(monotonic, 'opening never runs backwards');
-
-  assert(nextPortalState(opened, true, t0 + 10) === opened, 'a repeated "open" changes nothing — the bloom does not restart');
-
-  // Reversal half-way through the bloom is continuous.
+  assert(nextPortalState(opened, true, t0 + 10) === opened, 'a repeated "open" changes nothing');
   const mid = t0 + PORTAL_OPEN_MS * 0.4;
-  const before = portalProgress(opened, mid);
   const closing = nextPortalState(opened, false, mid);
-  assert(close(closing.from, before), 'closing mid-bloom starts from exactly where the bloom was');
-  assert(close(portalProgress(closing, mid), before), 'so nothing snaps at the reversal');
-  assert(portalPhase(closing, mid + 1) === 'closing', "and the phase is 'closing'");
-  assert(portalPhase(closing, mid + before * PORTAL_CLOSE_MS) === 'closed', 'it folds away in proportion to how far it had opened');
-
-  const settled = nextPortalState(opened, false, t0 + PORTAL_OPEN_MS * 2);
-  assert(settled.from === 1 && portalPhase(settled, t0 + PORTAL_OPEN_MS * 2 + PORTAL_CLOSE_MS) === 'closed', 'a fully open portal closes in PORTAL_CLOSE_MS');
-  assert(PORTAL_CLOSE_MS < PORTAL_OPEN_MS, 'closing is quicker than opening — it is a gathering, not a second show');
-  pass('closed → opening → open → closing → closed, deterministic and continuous');
+  assert(close(portalProgress(closing, mid), portalProgress(opened, mid)), 'reversing mid-bloom does not snap');
+  assert(portalPhase(closing, mid + 1) === 'closing' && portalPhase(closing, mid + PORTAL_CLOSE_MS) === 'closed', 'closing → closed');
+  pass('The portal\'s moment is deterministic and continuous');
 }
 
 // --- 3. the catalog ----------------------------------------------------------------------
 
 console.log('--- The applications come from NOVA\'s catalog ---');
 {
-  assert(portalApps() === APP_ORDER, 'the portal offers exactly APP_ORDER — not a second list');
-  assert(portalApps().every((app) => isPortalApp(app) && Boolean(APPS[app])), 'every offered application is defined in APPS');
-  for (const app of portalApps()) {
-    assert(genericAppFor(portalUtterance(app).replace(/^open /, '')) === app, `"${portalUtterance(app)}" resolves back to ${app}`);
-  }
-  for (const bad of ['calculator', '__proto__', 'constructor', 'bash -c id', 'Browser', '', 'spotify; rm -rf /']) {
-    assert(!isPortalApp(bad), `"${bad}" is not an application the portal offers`);
-  }
-  const sources = ['portalModel.ts', 'portal.ts'].map((f) => readFileSync(`src/systems/portal/${f}`, 'utf8'));
-  sources.push(readFileSync('src/components/interface/PortalLayer.tsx', 'utf8'));
+  assert(portalApps() === APP_ORDER, 'the portal reveals exactly APP_ORDER — not a second list');
+  for (const bad of ['calculator', '__proto__', 'bash -c id', 'Browser', '']) assert(!isPortalApp(bad), `"${bad}" is not a portal application`);
+  const sources = ['src/systems/portal/portalModel.ts', 'src/systems/portal/portal.ts', 'src/components/interface/PortalLayer.tsx'].map((f) => readFileSync(f, 'utf8'));
   assert(sources.every((src) => !/'(browser|code|files|notes|terminal)'/.test(src)), 'no portal file names an application itself');
-  pass('One catalog: APP_ORDER / APPS');
+  pass('One catalog');
 }
 
-// --- 4. where the applications settle, and how they travel -------------------------------
+// --- 4. the bloom reveals real windows -----------------------------------------------------
 
-console.log('--- Seats and the bloom ---');
+console.log('--- The bloom: NOVA\'s real spatial windows out of the Core ---');
 {
-  const count = portalApps().length;
-  const seats = portalApps().map((_, i) => portalSeat(i, count));
-  assert(seats[0].x === 0 || close(seats[0].x, 0), 'the first application sits directly above the Core');
-  assert(seats.every((s) => s.y > 0), 'every seat is above the Core — the bloom opens upwards');
-  for (let i = 1; i + 1 < count; i += 2) {
-    assert(close(seats[i].x, -seats[i + 1].x) && close(seats[i].y, seats[i + 1].y), `seats ${i} and ${i + 1} mirror each other`);
-  }
-  const keys = new Set(seats.map((s) => `${s.x.toFixed(3)},${s.y.toFixed(3)}`));
-  assert(keys.size === count, 'no two applications share a seat');
-  const depths = new Set(seats.map((s) => s.z.toFixed(3)));
-  assert(depths.size >= 3, 'the seats occupy several depths, not one flat plane');
-  assert(seats[0].z < seats[count - 1].z, 'higher seats sit further back, lower ones nearer the viewer');
-  const deeper = portalSeat(2, count, 1.5);
-  assert(close(deeper.x, seats[2].x) && close(deeper.y, seats[2].y) && close(deeper.z, seats[2].z - 1.5), 'a depth offset moves a seat straight back and nothing else');
+  const seen: Array<{ command: NovaCommand }> = [];
+  const off = subscribeToCommands((event) => seen.push(event));
+  const layerBefore = store().layer.currentLayerIndex;
+  const core = store().core.position;
 
-  const pose: PortalPose = { x: 0, y: 0, z: 0, scale: 0, opacity: 0, travel: 0 };
-  portalPose(0, 0, count, true, pose);
-  assert(close(pose.x, 0) && close(pose.y, 0) && close(pose.z, 0), 'at the start every application is at the heart of the Core');
-  assert(pose.opacity === 0 && pose.scale < 0.2, 'compressed and not yet visible');
-  for (let i = 0; i < count; i++) {
-    portalPose(1, i, count, true, pose);
-    assert(close(pose.x, seats[i].x) && close(pose.y, seats[i].y) && close(pose.z, seats[i].z), `fully open, application ${i} is at its seat`);
-    assert(close(pose.scale, 1) && pose.opacity === 1, `at full size and fully visible`);
-  }
-  // Mid-flight, the path swings towards the viewer: brought forward, not slid across.
-  let forward = false;
-  for (let p = 0.2; p < 0.9; p += 0.05) {
-    portalPose(p, 0, count, true, pose);
-    if (pose.z > seats[0].z + 0.2) forward = true;
-  }
-  assert(forward, 'in flight an application swings towards the viewer before settling back');
+  assert(requestPortal(true, 'pointer', null), 'the portal opens');
+  const opens = seen.map((e) => e.command).filter((c): c is Extract<NovaCommand, { action: 'open' }> => c.action === 'open');
+  assert(seen[0]?.command.action === 'portal', 'first the portal\'s intent, through the bus');
+  assert(opens.length === APP_ORDER.length && opens.every((c, i) => c.target === APP_ORDER[i]), 'then an ordinary "open" for each application, in catalog order');
+  assert(opens.every((c, i) => c.reveal?.delayMs === portalRevealDelay(i)), 'each marked as revealed, with its moment in the bloom');
+  assert(opens.every((c, i) => i === 0 || (c.reveal?.delayMs ?? 0) > (opens[i - 1].reveal?.delayMs ?? 0)), 'staggered — one bloom, not five at once');
 
-  // One bloom, one clock, staggered.
-  assert(portalTravel(0.4, 0, count) > portalTravel(0.4, count - 1, count), 'the first application leaves before the last');
-  assert(portalTravel(0.1, 0, count) === 0, 'nothing leaves while the Core is gathering itself');
-  // Closing runs the same function backwards: the last out is the first home.
-  assert(portalTravel(0.3, count - 1, count) < portalTravel(0.3, 0, count), 'folding back, the last application out is the first home');
+  const windows = APP_ORDER.map((app) => store().windows[app]);
+  assert(windows.every(Boolean), 'five real windows exist in the one window store');
+  assert(windows.every((w) => w.lifecycle === 'entering'), 'each entering, as any new window does');
+  assert(windows.every((w) => w.origin && close(w.origin.x, core.x) && close(w.origin.y, core.y) && close(w.origin.z, core.z)), 'each coming out of the Core');
+  assert(windows.every((w, i) => i === 0 || w.lifecycleAt > windows[i - 1].lifecycleAt), 'each leaving the Core in turn');
+  assert(store().focusedId === null, 'none steals focus while they bloom');
+  finishLayer();
+  assert(store().layer.currentLayerIndex === layerBefore, 'the bloom does not move NOVA to another layer');
 
-  portalStillPose(0.5, 1, count, pose);
-  assert(close(pose.x, seats[1].x) && pose.scale === 1 && close(pose.opacity, 0.5), 'under reduced motion an application fades in at its seat, without travelling');
-  pass('Every application comes out of the Core, along one staggered bloom, to a seat in depth');
+  const code = store().windows.code;
+  const start = presentWindow(code, { dockOrder: [], corePosition: core, now: code.lifecycleAt, layerState: store().layer });
+  assert(close(start.position.x, core.x, 1e-3) && close(start.position.y, core.y, 1e-3) && start.scale < 0.2, 'entering, a window starts compressed at the Core');
+  const home = presentWindow({ ...store().windows.browser, lifecycle: 'settled' }, { dockOrder: [], corePosition: core, now: 0, layerState: store().layer });
+  assert(close(home.position.x, store().windows.browser.position.x) && home.opacity === 1, 'and settles at its place in the room');
+  const behind = presentWindow({ ...code, lifecycle: 'settled' }, { dockOrder: [], corePosition: core, now: 0, layerState: store().layer });
+  assert(layerForApp('code') !== layerBefore && behind.position.z < code.position.z, 'an application of another layer settles behind (Phase 13)');
+
+  assert(interaction.activationOwner() === null, 'the portal holds no hand claim — pinches and air clicks reach the windows');
+  assert(requestPortal(true, 'pointer', null) && live().length === APP_ORDER.length, 'opening again reveals nothing twice');
+  off();
+  pass('Opening the portal is five ordinary opens: real windows, staggered, out of the Core');
 }
 
-// --- 5. selection --------------------------------------------------------------------------
+// --- 5. they are real windows: they drag, resize, minimise ----------------------------------
 
-console.log('--- Choosing an application ---');
-await (async () => {
-  const seen: NovaCommand[] = [];
-  const unsubscribe = subscribeToCommands(({ command }) => seen.push(command));
-
-  assert(selectPortalApp('notes', 'pointer') === false, 'nothing can be chosen while the portal is closed');
-  assert(seen.length === 0, 'and nothing reached the bus');
-
-  assert(requestPortal(true, 'pointer', null), 'the portal opens on request');
-  assert(store().portal.open, 'its intent is open');
-  assert(seen.at(-1)?.action === 'portal', 'through the command bus');
-
-  for (const bad of ['calculator', 'bash -c id', '__proto__']) {
-    seen.length = 0;
-    let refused = false;
-    try {
-      refused = selectPortalApp(bad, 'pointer') === false;
-    } catch {
-      refused = false;
-    }
-    assert(refused, `an invalid choice (${bad}) is refused cleanly`);
-    assert(seen.length === 0 && store().portal.open, 'nothing is dispatched and the portal stays open');
-  }
-
-  seen.length = 0;
-  assert(selectPortalApp('notes', 'pointer'), 'choosing Notes is accepted');
-  await settle();
-  await settle();
-  assert(store().portal.open === false, 'the portal folds away as the choice is made');
-  const portalAt = seen.findIndex((c) => c.action === 'portal' && !c.open);
-  const openAt = seen.findIndex((c) => c.action === 'open' && c.target === 'notes');
-  assert(portalAt >= 0 && openAt > portalAt, `it closes first, then "open notes" reaches the bus — saw ${JSON.stringify(seen)}`);
-  const notes = store().windows.notes;
-  assert(Boolean(notes), 'the Notes window exists, created by the ordinary open path');
-  assert(Boolean(notes?.origin), 'and it records the Core as where it came from');
-  if (notes?.origin) {
-    const core = store().core.position;
-    assert(close(notes.origin.x, core.x) && close(notes.origin.y, core.y) && close(notes.origin.z, core.z), 'its origin is the Core');
-    const start = presentWindow({ ...notes, lifecycle: 'entering', lifecycleAt: 0 }, { dockOrder: [], corePosition: core, now: 0 });
-    assert(close(start.position.x, core.x) && close(start.position.y, core.y) && start.scale < 0.2 * notes.scale, 'entering, it starts compressed at the Core');
-  }
-
-  const source = readFileSync('src/systems/portal/portal.ts', 'utf8');
-  assert(source.includes('void routeUtterance(portalUtterance(id), source)'), 'selection goes through routeUtterance — the resolver, catalog and native safety apply');
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-  assert(!/nativeBridge|launch|fetch\(|child_process|exec\(/.test(code), 'the portal has no launcher and no I/O of its own');
-  unsubscribe();
-  pass('A choice closes the portal and becomes "open <name>" on the ordinary command path');
-})();
-
-console.log('--- The portal and the spatial layers (Phase 13) ---');
-await (async () => {
-  const layerFor = (await import('../../data/layers')).layerForApp;
-  const target = layerFor('code');
-  const before = store().layer.currentLayerIndex;
-  assert(target !== before, `Code lives on another layer (${target}) than the current one (${before})`);
-  requestPortal(true, 'pointer', null);
-  assert(selectPortalApp('code', 'pointer'), 'choosing Code from the portal is accepted');
-  await settle();
-  await settle();
-  const layer = store().layer;
-  assert(Boolean(store().windows.code), 'the Code window comes out of the Core');
-  assert(layer.targetLayerIndex === target, `and NOVA moves to Code's layer (${layer.targetLayerIndex})`);
-  if (layer.phase !== 'idle') store().completeLayerTransition();
-  assert(store().layer.currentLayerIndex === target, 'arriving there once the transition completes');
-  const code = store().windows.code;
-  const settled = presentWindow({ ...code, lifecycle: 'settled' }, { dockOrder: [], corePosition: store().core.position, now: 0, layerState: store().layer });
-  assert(settled.opacity === 1, 'on its own layer Code is in the foreground, fully present');
-  const notes = store().windows.notes;
-  if (notes) {
-    const behind = presentWindow({ ...notes, lifecycle: 'settled' }, { dockOrder: [], corePosition: store().core.position, now: 0, layerState: store().layer });
-    assert(behind.position.z < notes.position.z && behind.opacity < 1, 'while an application from another layer rests behind it');
-  }
-  pass('An application chosen from the portal takes NOVA to its layer; the others rest behind');
-})();
-
-// --- 6. activation: pointer and air click, one implementation ---------------------------
-
-console.log('--- Pointer and air-click activation ---');
-await (async () => {
+console.log('--- Once out, each is a real NOVA window ---');
+{
   const camera = new PerspectiveCamera(50, 16 / 9, 0.1, 100);
   camera.position.set(0, 0, 5);
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld(true);
-  const core = new Mesh(new SphereGeometry(0.6, 12, 8));
-  core.updateMatrixWorld(true);
-  registerTarget(CORE_TARGET_ID, 'core', core);
   const viewport = { width: 1280, height: 800 };
-  const frame = {
-    x: 0, y: 0, primary: false, present: true, depthDelta: 0,
-    modifiers: { shift: false, alt: false, meta: false }, confidence: 1,
-  };
-  const render = (n = 3) => {
-    for (let i = 0; i < n; i++) interaction.update(camera, viewport);
-  };
-  if (store().portal.open) requestPortal(false, 'system', null);
+  // Terminal's physical slab, where its view would register it.
+  const slab = new Mesh(new PlaneGeometry(4, 3));
+  slab.updateMatrixWorld(true);
+  registerTarget('terminal', 'window', slab);
+  const frame = { x: 0, y: 0, primary: false, present: true, depthDelta: 0, modifiers: { shift: false, alt: false, meta: false }, confidence: 1 };
+  store().patchWindow('terminal', { lifecycle: 'settled' });
+  const before = { ...store().windows.terminal.position };
 
   interaction.submit(frame);
-  render();
-  assert(cursor.hoveredId === CORE_TARGET_ID, `the raycast really lands on the Core, got ${cursor.hoveredId}`);
-
-  // Pointer: press and release on the Core.
+  interaction.update(camera, viewport);
+  assert(cursor.hoveredId === 'terminal', 'the pointer lands on a revealed window');
   interaction.submit({ ...frame, primary: true });
-  render(1);
-  interaction.submit({ ...frame, primary: false });
-  render(1);
-  assert(store().portal.open, 'pressing the Core with the pointer opens the portal');
-  assert(store().commandOpen === false, 'and no longer opens the command line (that stays on ⌘K and the NOVA marks)');
+  interaction.update(camera, viewport);
+  assert(store().focusedId === 'terminal', 'pressing it focuses it');
+  interaction.submit({ ...frame, primary: true, x: 0.25, y: 0.1 });
+  for (let i = 0; i < 4; i++) interaction.update(camera, viewport);
+  interaction.submit({ ...frame, primary: false, x: 0.25, y: 0.1 });
+  interaction.update(camera, viewport);
+  const after = store().windows.terminal.position;
+  assert(after.x !== before.x || after.y !== before.y, `dragging it moves it (${before.x.toFixed(2)} → ${after.x.toFixed(2)})`);
+  unregisterTarget('terminal');
 
-  interaction.submit({ ...frame, primary: true });
-  render(1);
-  interaction.submit({ ...frame, primary: false });
-  render(1);
-  assert(store().portal.open === false, 'pressing it again folds the portal away');
+  const scaleBefore = store().windows.notes.scale;
+  dispatch({ action: 'scale', target: 'notes', delta: 0.1 }, 'pointer');
+  assert(store().windows.notes.scale > scaleBefore, 'it resizes through the ordinary scale command');
+  dispatch({ action: 'minimize', target: 'files' }, 'gesture');
+  assert(store().windows.files.minimized, 'it minimises');
+  dispatch({ action: 'restore', target: 'files' }, 'gesture');
+  assert(!store().windows.files.minimized, 'and restores');
+  pass('Drag, focus, resize, minimise and restore reach revealed windows unchanged');
+}
 
-  // Air click: the existing double pinch, through the existing activation path.
-  const pinch = { ...frame, confidence: 0.95, gesture: 'DOUBLE_PINCH', intent: 'activate' as const };
-  interaction.submit(pinch);
-  render(5);
-  interaction.submit({ ...frame, confidence: 0.95, gesture: 'POINT', intent: 'default' as const });
-  render(3);
-  assert(store().portal.open, 'an air click on the Core opens the portal');
-  requestPortal(false, 'system', null);
+// --- 6. gathering them back ------------------------------------------------------------------
 
-  // The Command Deck owns the hand while it is up: the portal will not take it.
-  const release = interaction.claimActivation(() => {}, 'deck');
-  assert(interaction.activationOwner() === 'deck', 'the deck names itself as the claimant');
-  interaction.submit({ ...frame, primary: true });
-  render(1);
-  interaction.submit({ ...frame, primary: false });
-  render(1);
-  assert(store().portal.open === false, 'while the Command Deck holds the hand, pressing the Core does not open the portal');
-  assert(togglePortal('keyboard', interaction.activationOwner()) === false, 'nor does the keyboard');
-  release();
-  assert(interaction.activationOwner() === null, 'releasing the claim leaves nobody holding the hand');
-  assert(requestPortal(false, 'gesture', PORTAL_CLAIM), 'the portal can always be closed, by its own claim');
+console.log('--- Gathering back into the Core ---');
+await (async () => {
+  const core = store().core.position;
+  assert(togglePortal('pointer', null), 'pressing the Core with applications out gathers them');
+  assert(live().length === 0, 'every window is folding away');
+  assert(!store().portal.open, 'and the portal is closed');
+  const notes = store().windows.notes;
+  const end = presentWindow(notes, { dockOrder: [], corePosition: core, now: notes.lifecycleAt + CLOSE_TRANSITION_MS + 1, layerState: store().layer });
+  assert(close(end.position.x, core.x, 1e-3) && close(end.position.y, core.y, 1e-3) && end.scale < 0.1 * notes.scale && end.expired, 'each folds back into the Core');
 
-  unregisterTarget(CORE_TARGET_ID);
-  const system = readFileSync('src/systems/interaction/interactionSystem.ts', 'utf8');
-  const keys = readFileSync('src/systems/input/keyboardCommands.ts', 'utf8');
-  const layer = readFileSync('src/components/interface/PortalLayer.tsx', 'utf8');
-  assert(!/CORE_TARGET_ID[\s\S]{0,200}action: 'command'/.test(system), 'the Core no longer toggles the command line');
-  assert((system.match(/togglePortal\(/g) ?? []).length === 2, 'pointer press and air click both call the one togglePortal');
-  assert(keys.includes("key === 'o'") && keys.includes("togglePortal('keyboard', interaction.activationOwner())"), 'the keyboard (O, Space) calls the same function');
-  assert(layer.includes('interaction.claimActivation(') && layer.includes('PORTAL_CLAIM'), 'while open, the portal owns a hand\'s air click, as the deck does');
-  assert(!/gestureRecognizer|DOUBLE_PINCH/.test(layer), 'the portal recognises no gestures of its own');
-  pass('Pointer, air click and keyboard open the portal through one implementation, respecting the Command Deck');
+  // Straight back out, before the close timers have fired.
+  assert(togglePortal('pointer', null), 'pressing again brings them straight back out');
+  assert(live().length === APP_ORDER.length, 'all five');
+  await new Promise((resolve) => setTimeout(resolve, CLOSE_TRANSITION_MS + 60));
+  assert(live().length === APP_ORDER.length, 'and the earlier close does not remove the windows that replaced them');
+  requestPortal(false, 'pointer', PORTAL_CLAIM);
+  sweep();
+
+  // Windows that did not come from the portal are gathered too — the Core reads the room.
+  dispatch({ action: 'open', target: 'notes' }, 'voice');
+  finishLayer();
+  assert(togglePortal('keyboard', null) && live().length === 0, 'the Core gathers whatever is out, however it was opened');
+  sweep();
+  pass('The applications fold back into the Core, and the Core always knows which way to go');
 })();
 
-// --- 7. the environment answers, the workspace resets --------------------------------------
+// --- 7. activation, through the real interaction system -----------------------------------
 
-console.log('--- The room answers the bloom ---');
+console.log('--- Pointer, air click and keyboard ---');
+{
+  const camera = new PerspectiveCamera(50, 16 / 9, 0.1, 100);
+  camera.position.set(0, 0, 5);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  const coreMesh = new Mesh(new SphereGeometry(0.6, 12, 8));
+  coreMesh.updateMatrixWorld(true);
+  registerTarget(CORE_TARGET_ID, 'core', coreMesh);
+  const viewport = { width: 1280, height: 800 };
+  const frame = { x: 0, y: 0, primary: false, present: true, depthDelta: 0, modifiers: { shift: false, alt: false, meta: false }, confidence: 1 };
+  const press = () => {
+    interaction.submit({ ...frame, primary: true });
+    interaction.update(camera, viewport);
+    interaction.submit({ ...frame, primary: false });
+    interaction.update(camera, viewport);
+  };
+  interaction.submit(frame);
+  interaction.update(camera, viewport);
+  assert(cursor.hoveredId === CORE_TARGET_ID, 'the raycast really lands on the Core');
+
+  press();
+  assert(live().length === APP_ORDER.length && store().portal.open, 'a pointer press on the Core brings the applications out');
+  assert(store().commandOpen === false, 'and does not open the command line');
+  press();
+  assert(live().length === 0, 'pressing again gathers them');
+  sweep();
+
+  interaction.submit({ ...frame, confidence: 0.95, gesture: 'DOUBLE_PINCH', intent: 'activate' as const });
+  for (let i = 0; i < 5; i++) interaction.update(camera, viewport);
+  interaction.submit({ ...frame, confidence: 0.95, gesture: 'POINT', intent: 'default' as const });
+  interaction.update(camera, viewport);
+  assert(live().length === APP_ORDER.length, 'an air click (double pinch) on the Core brings them out');
+  requestPortal(false, 'system', PORTAL_CLAIM);
+  sweep();
+
+  const release = interaction.claimActivation(() => {}, 'deck');
+  press();
+  assert(live().length === 0, 'while the Command Deck holds the hand, the Core does not open the portal');
+  assert(togglePortal('keyboard', interaction.activationOwner()) === false, 'nor does the keyboard');
+  release();
+  unregisterTarget(CORE_TARGET_ID);
+
+  const system = readFileSync('src/systems/interaction/interactionSystem.ts', 'utf8');
+  const keys = readFileSync('src/systems/input/keyboardCommands.ts', 'utf8');
+  assert((system.match(/togglePortal\(/g) ?? []).length === 2, 'pointer press and air click call the one togglePortal');
+  assert(!system.includes('requestPortal(false'), 'pressing the empty room only blurs — it never gathers the user\'s windows');
+  assert(keys.includes("togglePortal('keyboard', interaction.activationOwner())") && !keys.includes('requestPortal('), 'O / Space toggle; Escape only blurs, as before');
+  pass('One implementation for every input, respecting the Command Deck');
+}
+
+// --- 8. Phase 13 is preserved ----------------------------------------------------------------
+
+console.log('--- Spatial layers (Phase 13) ---');
+{
+  const before = store().layer.currentLayerIndex;
+  const target = layerForApp('code');
+  dispatch({ action: 'open', target: 'code' }, 'voice');
+  assert(store().layer.targetLayerIndex === target && target !== before, 'an ordinary "open" still moves NOVA to the application\'s layer');
+  finishLayer();
+  dispatch({ action: 'layer-go', target: before }, 'system');
+  finishLayer();
+  requestPortal(false, 'system', PORTAL_CLAIM);
+  sweep();
+  pass('Only a portal reveal leaves the layer where it is');
+}
+
+// --- 9. the room, the architecture ---------------------------------------------------------
+
+console.log('--- The room answers; nothing else was rebuilt ---');
 {
   const stop = startAmbience();
   requestPortal(true, 'pointer', null);
-  assert(pulseProgress('open', performance.now()) !== null, 'opening the portal sends the opening wave through the room');
+  assert(pulseProgress('open', performance.now()) !== null, 'opening sends the opening wave through the room');
   requestPortal(false, 'pointer', PORTAL_CLAIM);
-  assert(pulseProgress('settle', performance.now()) !== null, 'folding it away settles the room');
+  assert(pulseProgress('settle', performance.now()) !== null, 'gathering settles it');
   stop();
+  sweep();
 
-  requestPortal(true, 'pointer', null);
-  useSpatialStore.getState().applyWorkspace('home');
   const bus = readFileSync('src/systems/command/commandBus.ts', 'utf8');
+  assert(bus.includes('store.openWindow(command.target, command.reveal)'), 'a reveal is an ordinary open, through the bus');
   assert(bus.includes("case 'portal': {") && bus.includes('store.setPortal(command.open)'), 'the bus is the only thing that changes the portal');
-  assert(/case 'workspace': \{[\s\S]{0,200}store\.setPortal\(false\)/.test(bus), 'changing workspace folds the portal away');
-  requestPortal(false, 'system', PORTAL_CLAIM);
-
+  const portal = readFileSync('src/systems/portal/portal.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  assert(!/useSpatialStore\.setState|openWindow\(|patchWindow|fetch\(|nativeBridge|launch/.test(portal), 'the portal writes no store, launches nothing, has no I/O — it only dispatches');
+  const layer = readFileSync('src/components/interface/PortalLayer.tsx', 'utf8');
+  assert(!/<button|claimActivation|portal__item/.test(layer), 'no second set of application controls over the room');
   const driver = readFileSync('src/components/spatial/PortalDriver.tsx', 'utf8');
-  assert(!driver.includes('useState') && !driver.includes('fetch(') && !/new (Vector3|Object|Array)\(/.test(driver.split('export function PortalDriver')[1].split('/** Project')[0]), 'the portal frame loop allocates nothing, sets no React state, fetches nothing');
+  assert(!driver.includes('useState') && !/new Vector3\(/.test(driver.split('export function PortalDriver')[1].split('/** Reused')[0]), 'the portal frame loop allocates nothing and sets no React state');
   const model = readFileSync('src/systems/portal/portalModel.ts', 'utf8');
-  assert(!/swipe|layerIndex|activeLayer|LayerState/.test(model + driver + layer()), 'no Phase 13 layer navigation, state or stacks');
-  pass('The Phase 11 room reacts; no Phase 13 has been built');
-}
+  assert(!/swipe|activeLayer|LayerState/.test(model + driver + layer), 'no new layer machinery');
 
-function layer() {
-  return readFileSync('src/components/interface/PortalLayer.tsx', 'utf8');
-}
-
-console.log('--- The stylesheet is whole ---');
-{
-  // A dropped brace (easy to cause in a merge) silently swallows every rule
-  // after it — the portal and the Core caption then render as bare text.
   const css = readFileSync('src/index.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   let depth = 0;
   let negative = false;
@@ -365,8 +310,8 @@ console.log('--- The stylesheet is whole ---');
     }
   }
   assert(depth === 0 && !negative, `index.css braces balance (depth ${depth})`);
-  assert(/\.nova-interface \.portal__item \{/.test(css) && /\.core-label__body \{/.test(css), 'the portal and caption rules are present');
-  pass('The stylesheet parses as a whole');
+  assert(/\.portal__glow \{/.test(css) && /\.core-label__body \{/.test(css), 'the portal glow and caption rules are present');
+  pass('The Phase 11 room reacts; the window, gesture and command systems are the existing ones');
 }
 
 console.log('\n========================================');

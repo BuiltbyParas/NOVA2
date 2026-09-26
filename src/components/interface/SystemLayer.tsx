@@ -6,6 +6,7 @@ import { dispatch, subscribeToCommands } from '../../systems/command/commandBus'
 import { StatusHUD } from './StatusHUD';
 import { CommandDeck } from './CommandDeck';
 import { PortalLayer } from './PortalLayer';
+import { DemoLayer } from './DemoLayer';
 import { VoicePanel } from './VoicePanel';
 import { LayerIndicator } from './LayerIndicator';
 import { IntelligenceSurface } from './IntelligenceSurface';
@@ -147,6 +148,7 @@ export function SystemLayer() {
       <StatusHUD />
       <LayerIndicator />
       <PortalLayer />
+      <DemoLayer />
       <CommandDeck />
       <VoicePanel />
       <IntelligenceSurface />

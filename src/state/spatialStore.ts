@@ -95,7 +95,7 @@ interface SpatialState {
   setMinimized: (id: string, minimized: boolean) => void;
   beginClose: (id: string) => void;
   removeWindow: (id: string) => void;
-  openWindow: (app: AppType) => string;
+  openWindow: (app: AppType, reveal?: { delayMs: number }) => string;
   applyWorkspace: (id: WorkspaceId) => void;
   setTask: (id: TaskId | null) => void;
   setCoreState: (state: CoreState) => void;
@@ -283,26 +283,31 @@ export const useSpatialStore = create<SpatialState>((set, get) => ({
       };
     }),
 
-  openWindow: (app) => {
-    // If the app belongs to another layer, switch to that layer seamlessly
+  openWindow: (app, reveal) => {
+    // If the app belongs to another layer, switch to that layer seamlessly —
+    // unless the portal is revealing every application at once (Phase 12).
     const targetLayerIdx = layerForApp(app);
-    if (get().layer.currentLayerIndex !== targetLayerIdx && get().layer.phase === 'idle') {
+    if (!reveal && get().layer.currentLayerIndex !== targetLayerIdx && get().layer.phase === 'idle') {
       get().goToLayer(targetLayerIdx);
     }
 
     const existing = get().windows[app];
-    if (existing) {
+    if (existing && existing.lifecycle !== 'closing') {
       get().setMinimized(app, false);
-      get().focusWindow(app);
+      if (!reveal) get().focusWindow(app);
       return app;
     }
-    // Every application comes out of the NOVA Core (Phase 12).
-    const created = { ...createWindow(app, get().workspace), origin: { ...get().core.position } };
+    // Every application comes out of the NOVA Core (Phase 12); a revealed one
+    // waits its turn in the bloom.
+    const created = {
+      ...createWindow(app, get().workspace, reveal?.delayMs ?? 0),
+      origin: { ...get().core.position },
+    };
     set((state) => ({
       windows: { ...state.windows, [created.id]: created },
       order: [...state.order.filter((key) => key !== created.id), created.id],
     }));
-    get().focusWindow(created.id);
+    if (!reveal) get().focusWindow(created.id);
     return created.id;
   },
 

@@ -5,7 +5,7 @@ import { APP_ORDER } from '../../data/apps';
 import { WORKSPACE_ORDER } from '../../data/workspaces';
 import { voice } from '../voice/voiceStore';
 import { toggleIntelligence } from '../intelligence/intelligenceSession';
-import { requestPortal, togglePortal } from '../portal/portal';
+import { togglePortal } from '../portal/portal';
 import { interaction } from '../interaction/interactionSystem';
 
 /**
@@ -40,7 +40,6 @@ export function useKeyboardCommands() {
           return;
         }
         if (state.commandOpen) dispatch({ action: 'command', open: false }, 'keyboard');
-        else if (state.portal.open) requestPortal(false, 'keyboard', interaction.activationOwner());
         else dispatch({ action: 'blur' }, 'keyboard');
         return;
       }

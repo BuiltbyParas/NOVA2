@@ -32,7 +32,17 @@ export type NovaCommand =
   | { action: 'focus'; target: CommandTarget }
   | { action: 'blur' }
   /** Open one of NOVA's five spatial applications. Creates or restores a window. */
-  | { action: 'open'; target: AppType }
+  | {
+      action: 'open';
+      target: AppType;
+      /**
+       * Revealed by the NOVA portal (Phase 12): the window comes out of the Core
+       * after `delayMs` (so a bloom is staggered), without focusing itself and
+       * without moving NOVA to the application's layer — a bloom reveals every
+       * application, and Phase 13 seats those of other layers behind.
+       */
+      reveal?: { delayMs: number };
+    }
   /**
    * Launch an installed application NOVA has discovered but has no surface for.
    *

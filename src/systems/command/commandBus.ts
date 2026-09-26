@@ -117,8 +117,9 @@ function execute(command: NovaCommand) {
        * sentence away — `open Chrome`, `open Spotify` — where the user has
        * named the real thing and can expect a real window.
        */
-      store.openWindow(command.target);
-      store.notify(`Opened ${APPS[command.target].name}`, 'success');
+      store.openWindow(command.target, command.reveal);
+      // A bloom reveals every application at once; it is not five announcements.
+      if (!command.reveal) store.notify(`Opened ${APPS[command.target].name}`, 'success');
       return;
     }
 
@@ -150,7 +151,13 @@ function execute(command: NovaCommand) {
     case 'close': {
       for (const id of targetIds(command.target)) {
         store.beginClose(id);
-        window.setTimeout(() => useSpatialStore.getState().removeWindow(id), CLOSE_TRANSITION_MS);
+        window.setTimeout(() => {
+          // Only if it is still the window that was closed: reopened meanwhile
+          // (a portal bloom straight after a gather), it stays.
+          if (useSpatialStore.getState().windows[id]?.lifecycle === 'closing') {
+            useSpatialStore.getState().removeWindow(id);
+          }
+        }, CLOSE_TRANSITION_MS);
       }
       return;
     }

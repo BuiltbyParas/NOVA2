@@ -12,7 +12,7 @@ import type { SpatialWindow } from '../../types/window';
 import { dispatch } from '../command/commandBus';
 import { useSpatialStore } from '../../state/spatialStore';
 import { APPS } from '../../data/apps';
-import { requestPortal, togglePortal } from '../portal/portal';
+import { togglePortal } from '../portal/portal';
 
 export type InteractionMode = 'idle' | 'hover' | 'move' | 'scale' | 'rotate';
 
@@ -432,15 +432,14 @@ class InteractionSystem {
 
     const id = cursor.hoveredId;
     if (!id) {
-      // Pressing the empty room also folds an open portal away.
-      requestPortal(false, source, this.activationOwner());
       dispatch({ action: 'blur' }, source);
       return;
     }
 
     if (cursor.hoveredKind === 'core') {
-      // Phase 12: the Core is the NOVA portal — pressing it opens or closes it,
-      // unless another surface (the Command Deck) is holding the hand.
+      // Phase 12: the Core is the NOVA portal — pressing it brings the
+      // applications out, or gathers them back in, unless another surface (the
+      // Command Deck) is holding the hand.
       togglePortal(source, this.activationOwner());
       return;
     }
