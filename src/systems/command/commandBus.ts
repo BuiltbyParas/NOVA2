@@ -203,6 +203,8 @@ function execute(command: NovaCommand) {
     }
 
     case 'workspace': {
+      // Phase 12: a new arrangement folds the portal away; it opened over the old one.
+      store.setPortal(false);
       store.applyWorkspace(command.target);
       const focusApp = WORKSPACE_FOCUS[command.target];
       store.focusWindow(focusApp ? resolveWindowId(focusApp) : null);
@@ -245,6 +247,12 @@ function execute(command: NovaCommand) {
     case 'command': {
       store.setCommandOpen(command.open);
       store.setCoreState(command.open ? 'listening' : 'idle');
+      return;
+    }
+
+    case 'portal': {
+      // The portal only changes its own intent; what it reveals is derived.
+      store.setPortal(command.open);
       return;
     }
 

@@ -12,6 +12,7 @@ import type { SpatialWindow } from '../../types/window';
 import { dispatch } from '../command/commandBus';
 import { useSpatialStore } from '../../state/spatialStore';
 import { APPS } from '../../data/apps';
+import { requestPortal, togglePortal } from '../portal/portal';
 
 export type InteractionMode = 'idle' | 'hover' | 'move' | 'scale' | 'rotate';
 
@@ -139,6 +140,8 @@ class InteractionSystem {
   private activateConfidence = 1;
   /** Set while an overlay (the command deck) owns hand activation. */
   private activationClaim: (() => void) | null = null;
+  /** Which surface holds the claim, so others can respect it (Phase 12). */
+  private claimOwner: string | null = null;
 
   private raycaster = new Raycaster();
   private ndc = new Vector2();
@@ -200,13 +203,23 @@ class InteractionSystem {
    * still reaches the window underneath it. While a claim is held, a hand's
    * activation goes to the claimant instead, and its pinches press nothing —
    * so one double pinch is one choice, made on the deck. Mouse input is not
-   * affected. Returns the release.
+   * affected. `owner` names the claimant, so other surfaces (the portal) can
+   * tell that the hand is in use. Returns the release.
    */
-  claimActivation(onActivate: () => void): () => void {
+  claimActivation(onActivate: () => void, owner = 'overlay'): () => void {
     this.activationClaim = onActivate;
+    this.claimOwner = owner;
     return () => {
-      if (this.activationClaim === onActivate) this.activationClaim = null;
+      if (this.activationClaim === onActivate) {
+        this.activationClaim = null;
+        this.claimOwner = null;
+      }
     };
+  }
+
+  /** Who holds a hand's activation right now, or null. Read-only. */
+  activationOwner(): string | null {
+    return this.activationClaim ? this.claimOwner : null;
   }
 
   /** Called once per rendered frame by the scene. */
@@ -271,8 +284,9 @@ class InteractionSystem {
     if (!id) return;
 
     if (id === CORE_TARGET_ID) {
-      const open = !useSpatialStore.getState().commandOpen;
-      dispatch({ action: 'command', open }, 'gesture');
+      // Phase 12: the Core is the NOVA portal. (The command line stays on ⌘K
+      // and the NOVA marks.) No claim is held here — the branch above took it.
+      togglePortal('gesture', null);
       return;
     }
 
@@ -418,14 +432,16 @@ class InteractionSystem {
 
     const id = cursor.hoveredId;
     if (!id) {
+      // Pressing the empty room also folds an open portal away.
+      requestPortal(false, source, this.activationOwner());
       dispatch({ action: 'blur' }, source);
       return;
     }
 
     if (cursor.hoveredKind === 'core') {
-      // The Core is where the user speaks to the system in words.
-      const open = !useSpatialStore.getState().commandOpen;
-      dispatch({ action: 'command', open }, source);
+      // Phase 12: the Core is the NOVA portal — pressing it opens or closes it,
+      // unless another surface (the Command Deck) is holding the hand.
+      togglePortal(source, this.activationOwner());
       return;
     }
 

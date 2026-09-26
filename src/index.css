@@ -6,7 +6,15 @@
    ========================================================================== */
 
 :root {
-  --environment: #f4f4f1;
+  /* The environment (Phase 11C): a deep, warm graphite room the light surfaces
+     float in. The scene draws the room itself; this is its base tone, used by
+     the page behind the canvas and by the depth haze on distant windows. */
+  --environment: #0b111b;
+  /* Text and lines drawn directly on the environment, not on a surface. */
+  --env-text: #ecebf1;
+  --env-text-secondary: rgba(236, 235, 241, 0.66);
+  --env-text-tertiary: rgba(236, 235, 241, 0.42);
+  --env-ink: #e6e4ee;
   --surface: #ffffff;
   --surface-secondary: #ecedea;
   --text: #17181a;
@@ -19,8 +27,17 @@
   /* System interface is glass over the environment rather than panels in it:
      one translucent white, one blur radius, used everywhere so the instruments
      read as a single layer at a single depth. */
-  --glass: rgba(255, 255, 255, 0.78);
-  --glass-strong: rgba(255, 255, 255, 0.92);
+  --glass: rgba(255, 255, 255, 0.94);
+  --glass-strong: rgba(255, 255, 255, 0.97);
+  /* Phase 11C: over the dark room, translucent white turns grey, so the light
+     system glass is nearly opaque. Small instruments that sit on the room itself
+     (the workspace rail, the Core caption) use a dark glass instead, which keeps
+     their light text legible even when a surface drifts behind them. */
+  --glass-dark: rgba(22, 22, 27, 0.66);
+  --glass-dark-border: rgba(255, 255, 255, 0.08);
+  /* Glass for surfaces read at length (the Intelligence Surface): opaque enough
+     that nothing behind it shows through the text. */
+  --glass-reading: rgba(255, 255, 255, 0.96);
 
   /* Status only. These never appear in the environment and never decorate —
      a colour here always means a device is in a state worth knowing about. */
@@ -157,12 +174,16 @@ button {
      a mid shadow that grows a little with focus, and a long one that carries
      most of the lift — which is what makes a focused surface read as nearer
      rather than merely brighter. */
+  /* Phase 11C: in a dark room a surface floats by its shadow and by the light
+     catching its edge. The rim is the room's light on the pane's edge; the three
+     shadows deepen with focus, carrying the lift. */
   box-shadow:
-    0 2px 5px rgba(20, 22, 26, 0.05),
-    0 calc(10px + var(--focus) * 10px) calc(24px + var(--focus) * 16px)
-      rgba(20, 22, 26, calc(0.07 + var(--focus) * 0.035)),
-    0 calc(30px + var(--focus) * 34px) calc(64px + var(--focus) * 56px)
-      rgba(20, 22, 26, calc(0.1 + var(--focus) * 0.07));
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 2px 6px rgba(0, 0, 0, 0.28),
+    0 calc(12px + var(--focus) * 10px) calc(28px + var(--focus) * 16px)
+      rgba(0, 0, 0, calc(0.26 + var(--focus) * 0.08)),
+    0 calc(34px + var(--focus) * 34px) calc(80px + var(--focus) * 56px)
+      rgba(0, 0, 0, calc(0.34 + var(--focus) * 0.1));
 }
 
 /* The accent belongs to focus and to nothing else. Held far below a glow — a
@@ -256,7 +277,10 @@ button {
   inset: 0;
   border-radius: 14px;
   background: var(--environment);
-  opacity: var(--scrim);
+  /* Phase 11C: the haze is now the dark room's own tone, so it is applied at a
+     little over half its old strength — distance should dim a surface, not grey
+     it out. */
+  opacity: calc(var(--scrim) * 0.55);
   pointer-events: none;
   z-index: 4;
 }
@@ -897,6 +921,7 @@ button {
 .cursor__point {
   position: absolute;
   border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(12, 12, 16, 0.4);
   transform: translate(-50%, -50%) scale(var(--cursor-scale, 1));
   transition:
     width 200ms var(--ease-spatial),
@@ -908,13 +933,15 @@ button {
 .cursor__ring {
   width: 26px;
   height: 26px;
-  border: 1px solid rgba(23, 24, 26, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  /* Light on the room, outlined so it still reads over a white surface. */
+  box-shadow: 0 0 0 1px rgba(12, 12, 16, 0.32);
 }
 
 .cursor__point {
   width: 3px;
   height: 3px;
-  background: rgba(23, 24, 26, 0.6);
+  background: rgba(255, 255, 255, 0.92);
 }
 
 /* Landing on a surface: the ring tightens and adopts the accent. */
@@ -962,7 +989,8 @@ button {
   font-size: 10.5px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--env-text);
+  text-shadow: 0 1px 3px rgba(12, 12, 16, 0.7);
 }
 
 /* A short track reading where the touched surface sits between back and front. */
@@ -1005,14 +1033,15 @@ button {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.22em;
-  color: var(--text);
+  color: var(--env-text);
+  text-shadow: 0 0 8px rgba(12, 12, 16, 0.85);
 }
 
 .identity__state {
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--env-text-tertiary);
 }
 
 /* --------------------------------------------------------------------------
@@ -1394,7 +1423,7 @@ button {
   font-size: 8.5px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--env-text-tertiary);
   opacity: 0;
   animation: deck-in 260ms var(--ease-spatial) 60ms forwards;
 }
@@ -1585,7 +1614,7 @@ button {
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--env-text-secondary);
 }
 
 .voice[data-status='listening'] .voice__state {
@@ -1601,12 +1630,14 @@ button {
   font-size: 12px;
   line-height: 1.35;
   letter-spacing: -0.006em;
-  color: var(--text-tertiary);
+  /* Secondary rather than tertiary since Phase 11: this line sits directly on
+     the floor, which is now deeper towards the bottom of the view. */
+  color: var(--env-text-tertiary);
 }
 
 .voice[data-status='listening'] .voice__detail,
 .voice[data-status='processing'] .voice__detail {
-  color: var(--text);
+  color: var(--env-text);
 }
 
 @keyframes nova-breathe {
@@ -1615,29 +1646,36 @@ button {
 }
 
 .rail {
+  /* Phase 11C: a single row beneath the NOVA mark. The middle of the left edge
+     is where windows drift in some workspaces; this strip is clear in all three,
+     so the rail never covers a surface's content. */
   position: absolute;
-  left: 32px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 18px;
+  top: 66px;
   display: flex;
-  flex-direction: column;
-  gap: 14px;
+  flex-direction: row;
+  gap: 10px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  background: var(--glass-dark);
+  border: 1px solid var(--glass-dark-border);
+  backdrop-filter: blur(14px) saturate(1.2);
 }
 
 .rail__item {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  color: var(--text-tertiary);
+  color: var(--env-text-tertiary);
   transition: color 240ms var(--ease-spatial);
 }
 
 .rail__item:hover {
-  color: var(--text-secondary);
+  color: var(--env-text-secondary);
 }
 
 .rail__item.is-active {
-  color: var(--text);
+  color: var(--env-text);
 }
 
 .rail__index {
@@ -1763,13 +1801,13 @@ button {
   font-size: 10px;
   line-height: 1.3;
   white-space: nowrap;
-  color: var(--text-tertiary);
+  color: var(--env-text-tertiary);
 }
 
 .hints__key {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-secondary);
+  color: var(--env-text-secondary);
 }
 
 .hints__meaning {
@@ -2457,5 +2495,566 @@ button {
   }
   to {
     transform: scale(1.04);
+  }
+}
+
+/* ==========================================================================
+   NOVA Intelligence (Phase 10)
+   A conversation drawn as NOVA's glass: the HUD's translucent white, the
+   command line's hairline and shadow, and the accent kept for NOVA itself —
+   its mark, its activity and its outcomes. Nothing here glows or loops except
+   the three dots while NOVA is actually thinking, which say exactly that.
+   ========================================================================== */
+
+.intel {
+  /* The right-hand column, beneath the status panel: the conversation stays
+     beside the NOVA Spatial Core rather than on top of it, so NOVA can be seen
+     thinking about what it was asked. */
+  position: absolute;
+  right: 28px;
+  top: 410px;
+  bottom: 48px;
+  width: min(400px, calc(100vw - 56px));
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--glass-reading);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 1px 2px rgba(20, 22, 26, 0.04),
+    0 14px 34px rgba(20, 22, 26, 0.08),
+    0 40px 90px rgba(20, 22, 26, 0.12);
+  backdrop-filter: blur(20px) saturate(1.3);
+  pointer-events: auto;
+  overflow: hidden;
+  z-index: 6;
+  transform-origin: bottom right;
+}
+
+.intel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 12px 12px 16px;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.intel__mark {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--text);
+}
+
+.intel__title {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.intel__state {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.intel__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal-ok);
+}
+
+.intel__state[data-state='thinking'] .intel__dot,
+.intel__state[data-state='listening'] .intel__dot {
+  background: var(--accent);
+}
+
+.intel__state[data-state='offline'] .intel__dot {
+  background: var(--signal-warn);
+}
+
+.intel__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 160ms var(--ease-spatial), color 160ms var(--ease-spatial);
+}
+
+.intel__icon:hover:not(:disabled) {
+  background: var(--surface-secondary);
+  color: var(--text);
+}
+
+.intel__icon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.intel__log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+.intel__empty {
+  margin: auto 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.intel__lead {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.intel__sub {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.intel__msg {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-width: 100%;
+}
+
+.intel__msg[data-role='user'] {
+  align-self: flex-end;
+  max-width: 84%;
+}
+
+.intel__msg[data-role='user'] .intel__text {
+  padding: 8px 12px;
+  border-radius: 12px 12px 4px 12px;
+  background: var(--surface-secondary);
+  color: var(--text);
+}
+
+/* NOVA speaks without a bubble: a thin accent rule marks the voice, the way the
+   accent marks focus on a window. An answer that failed takes the warning tone
+   instead, so it is never mistaken for a normal reply. */
+.intel__msg[data-role='nova'] .intel__text {
+  padding-left: 11px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--text);
+}
+
+.intel__msg[data-mode='error'] .intel__text {
+  border-left-color: color-mix(in srgb, var(--signal-warn) 70%, transparent);
+  color: var(--text-secondary);
+}
+
+.intel__text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.intel__para {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.intel__para + .intel__para,
+.intel__para + .intel__list,
+.intel__list + .intel__para {
+  margin-top: 8px;
+}
+
+.intel__list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.intel__list li + li {
+  margin-top: 3px;
+}
+
+.intel__action {
+  align-self: flex-start;
+  margin-left: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px;
+}
+
+.intel__action-command {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.intel__action-outcome {
+  color: var(--signal-ok);
+}
+
+.intel__action[data-outcome='question'] .intel__action-outcome {
+  color: var(--signal-warn);
+}
+
+.intel__action[data-outcome='unresolved'] .intel__action-outcome {
+  color: var(--signal-bad);
+}
+
+.intel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.intel__msg .intel__chips {
+  margin-left: 13px;
+}
+
+.intel__chip {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-spatial), color 160ms var(--ease-spatial);
+}
+
+.intel__chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--text);
+}
+
+.intel__thinking {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px 0 2px 13px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.intel__thinking span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.25;
+  animation: intel-thinking 1.2s var(--ease-spatial) infinite;
+}
+
+.intel__thinking span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.intel__thinking span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes intel-thinking {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 0.9;
+  }
+}
+
+.intel__field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 12px 12px;
+  padding: 0 6px 0 14px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color 180ms var(--ease-spatial), box-shadow 180ms var(--ease-spatial);
+}
+
+.intel__field:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.intel__field[data-listening] {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.intel__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.intel__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.intel__mic[aria-pressed='true'] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.intel__send {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 160ms var(--ease-spatial);
+}
+
+.intel__send:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+@media (max-height: 760px) {
+  .intel {
+    top: auto;
+    height: calc(100vh - 96px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intel__thinking span {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* ==========================================================================
+   NOVA Spatial Core caption (Phase 11B)
+   Two lines of micro-text attached beneath the Core: the lowest level of the
+   visual hierarchy. No box, no card — text in the room.
+   ========================================================================== */
+
+.core-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding-left: 30px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+/* The caption's own dark glass, so it stays legible over the room or over a
+   surface that has drifted behind it. */
+.core-label__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 7px 11px 7px 10px;
+  border-radius: 9px;
+  background: var(--glass-dark);
+  border: 1px solid var(--glass-dark-border);
+  backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/* The leader: a hairline from the Core's outer ring to the caption. */
+.core-label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 22px;
+  height: 1px;
+  background: color-mix(in srgb, var(--env-ink) 34%, transparent);
+}
+
+.core-label__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--env-text-secondary);
+}
+
+.core-label__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--signal-ok);
+}
+
+.core-label[data-mode='listening'] .core-label__dot,
+.core-label[data-mode='thinking'] .core-label__dot {
+  background: var(--accent);
+}
+
+.core-label[data-mode='listening'] .core-label__state,
+.core-label[data-mode='thinking'] .core-label__state {
+  /* The accent, lifted towards white so it reads on the dark room. */
+  color: color-mix(in srgb, var(--accent) 55%, var(--env-text));
+}
+
+.core-label__context {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--env-text-tertiary);
+}
+
+/* ---------------------------------------------------------------------------
+   Phase 12 — the NOVA application portal.
+
+   The applications are drawn at positions the scene projects each frame, so
+   every element here is anchored at the top-left and moved by one transform.
+   No backdrop blur: five moving blurs would re-filter the scene every frame on
+   modest hardware, so the glass is simply a little more opaque.
+   --------------------------------------------------------------------------- */
+.portal {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.portal__apps {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* The Core gathering and releasing the bloom: warm light, as the Core's light is. */
+.portal__glow {
+  position: absolute;
+  left: -90px;
+  top: -90px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(246, 233, 210, 0.55) 0%,
+    rgba(233, 180, 124, 0.22) 32%,
+    rgba(127, 216, 230, 0.06) 58%,
+    transparent 72%
+  );
+  opacity: 0;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+/* A thread of light from the Core to each application in flight. 1px long,
+   scaled to length; it fades as the application settles. */
+.portal__trail {
+  position: absolute;
+  left: 0;
+  top: -0.5px;
+  width: 1px;
+  height: 1px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(246, 233, 210, 0.9), rgba(217, 224, 234, 0.35) 60%, transparent);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.nova-interface .portal__item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px 7px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 224, 234, 0.16);
+  background: linear-gradient(180deg, rgba(24, 33, 48, 0.9), rgba(12, 18, 28, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(217, 224, 234, 0.12),
+    0 10px 28px rgba(3, 6, 12, 0.45);
+  color: var(--env-text);
+  font: 500 13px/1 var(--font-sans);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transition:
+    border-color 160ms var(--ease-spatial),
+    box-shadow 160ms var(--ease-spatial),
+    background 160ms var(--ease-spatial);
+}
+
+.portal__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: rgba(217, 224, 234, 0.92);
+  background: radial-gradient(circle at 50% 35%, rgba(217, 224, 234, 0.16), rgba(217, 224, 234, 0.04));
+  box-shadow: inset 0 0 0 1px rgba(217, 224, 234, 0.14);
+}
+
+.portal__name {
+  padding-right: 2px;
+}
+
+/* Highlight and focus: cyan, because cyan means you are interacting with the space. */
+.nova-interface .portal__item[data-highlighted='true'],
+.nova-interface .portal__item:focus-visible {
+  outline: none;
+  border-color: rgba(127, 216, 230, 0.7);
+  background: linear-gradient(180deg, rgba(28, 42, 58, 0.94), rgba(14, 22, 33, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(127, 216, 230, 0.2),
+    0 0 0 3px rgba(127, 216, 230, 0.14),
+    0 14px 34px rgba(3, 6, 12, 0.5);
+}
+
+.nova-interface .portal__item[data-highlighted='true'] .portal__icon,
+.nova-interface .portal__item:focus-visible .portal__icon {
+  color: #e9f8fb;
+  box-shadow: inset 0 0 0 1px rgba(127, 216, 230, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal__trail {
+    display: none;
   }
 }

@@ -142,10 +142,25 @@ export function presentWindow(
 
   if (win.lifecycle === 'entering') {
     const enterProgress = easeOutQuint((now - win.lifecycleAt) / ENTRY_TRANSITION_MS);
-    opacity *= enterProgress;
-    // Windows establish themselves by settling forward out of the depth.
-    position = { ...position, z: position.z - (1 - enterProgress) * 0.9 };
-    scale *= 0.93 + 0.07 * enterProgress;
+    // Multiplied, so a layer's fade (Phase 13) still applies while entering.
+    opacity *= Math.min(1, enterProgress * 1.6);
+    if (win.origin) {
+      // Phase 12: out of the NOVA Core — from a compressed point at its heart,
+      // along a path that swings slightly towards the viewer, to its place
+      // (its layered place, when Phase 13 has moved it back).
+      const o = win.origin;
+      const lift = Math.sin(enterProgress * Math.PI) * 0.5;
+      position = {
+        x: o.x + (position.x - o.x) * enterProgress,
+        y: o.y + (position.y - o.y) * enterProgress,
+        z: o.z + (position.z - o.z) * enterProgress + lift,
+      };
+      scale *= 0.08 + 0.92 * enterProgress;
+    } else {
+      // Windows establish themselves by settling forward out of the depth.
+      position = { ...position, z: position.z - (1 - enterProgress) * 0.9 };
+      scale *= 0.93 + 0.07 * enterProgress;
+    }
   } else if (win.lifecycle === 'closing') {
     const raw = (now - win.lifecycleAt) / CLOSE_TRANSITION_MS;
     const closeProgress = smoothstep(raw);

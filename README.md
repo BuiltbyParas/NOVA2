@@ -1,4 +1,4 @@
-# NOVA — Phase 9.5B: Gesture-Native Air Click
+# NOVA — Phase 11: Spatial Visual Environment
 
 ![Phase 1 — complete](https://img.shields.io/badge/phase%201-complete-5B5CE2?style=flat-square)
 ![Phase 2 — complete](https://img.shields.io/badge/phase%202-complete-5B5CE2?style=flat-square)
@@ -9,8 +9,10 @@
 ![Phase 7 — complete](https://img.shields.io/badge/phase%207-complete-5B5CE2?style=flat-square)
 ![Phase 8 — complete](https://img.shields.io/badge/phase%208-complete-5B5CE2?style=flat-square)
 ![Phase 9 — complete](https://img.shields.io/badge/phase%209-complete-5B5CE2?style=flat-square)
-![Phase 9.5 — current milestone](https://img.shields.io/badge/phase%209.5-current%20milestone-2F9E6E?style=flat-square)
-![Phase 9.5B — current](https://img.shields.io/badge/phase%209.5B-current-2F9E6E?style=flat-square)
+![Phase 9.5 — complete](https://img.shields.io/badge/phase%209.5-complete-5B5CE2?style=flat-square)
+![Phase 9.5B — complete](https://img.shields.io/badge/phase%209.5B-complete-5B5CE2?style=flat-square)
+![Phase 10 — complete](https://img.shields.io/badge/phase%2010-complete-5B5CE2?style=flat-square)
+![Phase 11 — current](https://img.shields.io/badge/phase%2011-current-2F9E6E?style=flat-square)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-Tasks%20Vision-6B6D70?style=flat-square)
 ![React 19](https://img.shields.io/badge/React-19-6B6D70?style=flat-square&logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-6B6D70?style=flat-square&logo=typescript&logoColor=white)
@@ -29,12 +31,14 @@ used together. Phase 8 opens NOVA's eyes to the computer it is running on.
 Phase 9 lets NOVA open an application on that computer, through one narrow,
 validated action. Phase 9.5 extends that to any application that is actually
 installed, by name. Phase 9.5B makes the hand a first-class way to issue the same
-commands — point at a window and double pinch to select it.
+commands — point at a window and double pinch to select it. Phase 10 lets you
+talk with NOVA. Phase 11 turns the plain background into a room NOVA's windows
+stand in.
 
 ## Where NOVA is now
 
-**NOVA is at Phase 9.5B.** Phases 1–8 are completed milestones, documented below
-as they were delivered. Phase 9 onward is the current implementation.
+**NOVA is at Phase 11.** Phases 1–10 are completed milestones, documented below
+as they were delivered.
 
 | Phase | Milestone | State |
 | --- | --- | --- |
@@ -47,8 +51,10 @@ as they were delivered. Phase 9 onward is the current implementation.
 | 7 | Multimodal | complete |
 | 8 | Native System Awareness | complete |
 | 9 | Native Application Control | complete |
-| 9.5 | Universal application discovery and launch | current development milestone |
-| 9.5B | Gesture-native commands and air click | current implementation state |
+| 9.5 | Universal application discovery and launch | complete |
+| 9.5B | Gesture-native commands and air click | complete |
+| 10 | NOVA Intelligence Core | complete |
+| 11 | Spatial Visual Environment | current implementation state |
 
 The source code labels the Phase 9.5 discovery work "Phase 9.5A", and the gesture
 work "Phase 9.5B"; the two names refer to the same milestones.
@@ -58,7 +64,39 @@ how the phases stack into one system is in [docs/ARCHITECTURE.md](docs/ARCHITECT
 
 ## Status
 
-**Phase 9.5B is the current implementation state.** A gesture is a way of
+**Phase 12 is the current implementation state.** NOVA opens on a clean
+spatial environment with one entry point: the **NOVA portal**, the glass Core at
+the bottom centre. Click it, air click it (double pinch), or press `O`, and the
+Core gathers light and blooms NOVA's applications out into the room — each
+flying from the Core's heart to a seat at its own depth. Choose one and its
+window comes out of the Core; dismiss and they fold back into it. Selection goes
+through the ordinary command path (`open <name>` → `routeUtterance`). `npm test`
+runs 98 portal assertions. See [docs/phases/phase-12.md](docs/phases/phase-12.md).
+
+**Phase 11 (with 11B–11E) is complete.** The
+environment is a darkened spatial room in deep blue-grey, generated entirely in
+shaders (no video), where colour appears only as light with a meaning: warm for
+the NOVA Core, violet for intelligence, cyan for spatial interaction, pearl for
+the room's own structures. Slate light moves through the air; a soft key light
+falls from high on the left; a horizon of light and haze, a giant distant arc,
+tall frames and an enormous ring of light around the Core give it scale, and
+streams of pearl dot-light cross it in depth. At its centre the **NOVA Spatial
+Core** is a bloom drawn in dot-matrix light — pearl petals, an amber heart that
+lights the room, swaying, dissolving into falling dots, flaring at its tips.
+Listening brightens its edges cyan; thinking fills it and the room around it
+with violet; a command sends a cyan-violet ripple; an opening a cyan wave across
+wall and floor; a hand carries its own cyan light. `npm test` runs 274
+environment assertions. See [docs/phases/phase-11.md](docs/phases/phase-11.md).
+
+**Phase 10 is complete.** NOVA holds a conversation. Press `I` (or click the AI
+row in the status panel) and ask anything: it answers questions, follows
+references across turns ("explain it like I'm 15", "open it"), and tells a
+conversational request from an action. An action is one NOVA instruction
+sentence handed to the same `routeUtterance` typing and speech use, so it reaches
+state only through the command bus. `npm test` runs 151 intelligence assertions.
+See [docs/phases/phase-10.md](docs/phases/phase-10.md).
+
+**Phase 9.5B is complete.** A gesture is a way of
 saying a command, not a second way of executing one. Pointing at a window and
 double pinching produces the sentence `open <window>` and hands it to the same
 `routeUtterance` that typing and speech use. Air click is hardened so that it is
@@ -67,7 +105,7 @@ reliable with a real hand: hand-originated commands are labelled `gesture`, the
 the window it selects, and the Command Deck owns the double pinch while it is
 open. `npm test` runs 131 gesture assertions.
 
-**Phase 9.5 is the current development milestone.** `open Spotify` resolves the
+**Phase 9.5 is complete.** `open Spotify` resolves the
 name against the installed-application catalog Phase 8 already reads, and
 launches the application by its desktop entry id. A category word — `open
 browser` — still opens NOVA's own surface and launches nothing. `npm test` runs
@@ -148,9 +186,16 @@ bare Vite for pure interface work, and its name says what it lacks.
 
 `npm run build` produces a static bundle; `npm run preview` serves it.
 
+**The server listens on `127.0.0.1` only.** It holds the Gemini key and can
+launch installed applications, so by default nothing else on the network can
+reach it. Set `NOVA_HOST=0.0.0.0` in `.env` to listen on every interface — for a
+container, or to open NOVA from another device on a trusted network. (Vite's own
+hot-reload socket, port 24678, is managed by Vite and carries module updates
+only.)
+
 ### Verifying it
 
-`npm test` runs eleven self-contained suites under `tsx`; each can also be run
+`npm test` runs thirteen self-contained suites under `tsx`; each can also be run
 alone. Current totals:
 
 | Script | Covers | Assertions |
@@ -166,6 +211,8 @@ alone. Current totals:
 | `test:catalog` | Phase 9.5 application discovery | 198 |
 | `test:gesture` | Phase 9.5B gesture pipeline and air click | 131 |
 | `test:sync` | native–spatial comparison | 102 |
+| `test:intelligence` | Phase 10 conversation, actions, safeguards | 151 |
+| `test:environment` | Phase 11–11E room, light and colour meaning, palette, layers, streams, bloom, Spatial Core modes and pulses, render-path rules | 274 |
 
 No suite claims that a real application launched or that a real camera tracked a
 hand: both are verified on the machine itself, not in a unit test.
@@ -202,6 +249,72 @@ candidates as buttons. Nothing is executed while the question is open.
 Press `c` in a development build for the context inspector: current workspace,
 task, focus, recency, each window's semantic role and relations, and the exact
 payload handed to the model. It is compiled out of production builds entirely.
+
+### The room (Phase 11, 11B–11E)
+
+The windows float in a darkened spatial room of deep blue-grey. Slate light
+moves slowly through its air; a soft cool-white light falls from high on the
+left; a band of light and haze marks the horizon, and a giant arc, tall frames
+and an enormous ring of light lying around the centre — all faint, all distant —
+make it feel enormous. Streams of pearl dot-light cross the room at a different
+depth, pulses travelling along them. The floor is a lattice of dim pearl points.
+At the centre, rising between the windows, is the **NOVA Spatial Core**: a bloom
+of six pearl petals drawn in tiny plus-shaped LED cells around an amber heart,
+whose warm light spills into the room and onto the floor beneath it. Beside it a
+small caption reads "NOVA · Ready" and the current workspace.
+
+Colour means something: **warm** is the Core, **violet** is NOVA thinking,
+**cyan** is you interacting with the space.
+
+| When | NOVA |
+| --- | --- |
+| Nothing is happening | the air and light drift; streams flow; the bloom breathes and flares, sending warm light into the room; caption "Ready" |
+| You move the pointer | the layers shift at different rates — wall least, streams and ring more, windows barely; a faint cyan light follows the pointer |
+| A hand is in view (`V`) | cyan light and a cyan ring follow your hand; the floor's rings cool towards cyan; "Hand tracked" |
+| NOVA is listening (`S`) | the bloom's edges brighten cyan and it breathes with your voice; "Listening" |
+| NOVA is thinking (`I`, then ask) | violet rises from the heart through the bloom; the Core's light and the ring turn violet; violet streams leave the Core; "Thinking" |
+| A command runs | a brief cyan-to-violet ripple and pulse; the bloom flares |
+| An application opens | a restrained cyan wave crosses the wall and the floor; a ring of dots leaves the bloom |
+| An answer arrives | a soft flare, and the room returns to neutral |
+
+With reduced motion the drift and pulses stop. The colours live in `PALETTE` in
+`src/data/environment.ts`, held equal to the CSS tokens by a test. Detail:
+[docs/phases/phase-11.md](docs/phases/phase-11.md).
+
+### Talking with NOVA (Phase 10)
+
+Press `I`, or click **AI** in the status panel, to open the Intelligence
+Surface. It opens in the right-hand column beneath the status panel, so the NOVA
+Spatial Core stays in view — and visibly thinks — while you talk to it.
+
+| You say | NOVA does |
+| --- | --- |
+| `What is quantum computing?` | answers in the conversation; nothing moves |
+| `Explain it like I'm 15` | answers again, reading "it" from the previous turn |
+| `Can you tuck the notes window away?` | turns it into `minimize notes` and runs it through the command bus |
+| `What is Spotify?` then `Open it` | resolves "it" to Spotify and launches it through the installed-application catalog |
+| `open terminal` | runs at once, without asking the model |
+| `Delete my Downloads folder` | refuses, and says what NOVA can do instead |
+| `start over` | clears the conversation |
+
+The microphone button — or `S` when the text field is not focused — uses the
+existing voice system; spoken sentences are answered here instead of in the command line.
+
+```
+  typed / spoken sentence → converse()
+     ├─ plain instruction ("open terminal") ─────────────→ routeUtterance
+     └─ anything else → POST /api/intelligence/turn → Gemini (server-side key)
+           conversation / clarification / refusal → a reply is shown; nothing runs
+           action → one NOVA sentence ("open Spotify") → routeUtterance → command bus
+```
+
+The model sees a deliberate projection of NOVA — workspace, focused window, open
+surfaces, installed and running application names, recent actions — never
+positions, ids, paths or the store. Its answer is validated on the server and
+again in the browser, and an action sentence containing shell characters, paths
+or command words is refused before anything reads it. When Gemini is unavailable,
+NOVA says so and still carries out plain instructions. Full detail, including
+limitations: [docs/phases/phase-10.md](docs/phases/phase-10.md).
 
 ### Pointing and selecting with a hand (Phase 9.5B)
 

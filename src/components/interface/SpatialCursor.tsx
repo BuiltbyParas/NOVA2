@@ -69,7 +69,8 @@ export function SpatialCursor() {
       if (cursor.hoveredControl) {
         label = CONTROL_LABELS[cursor.hoveredControl];
       } else if (cursor.hoveredId === CORE_TARGET_ID) {
-        label = 'NOVA';
+        // Phase 12: the Core is the portal to NOVA's applications.
+        label = spatial().portal.open ? 'Close' : 'Applications';
       } else if (cursor.hoveredId) {
         const win = spatial().windows[cursor.hoveredId];
         label = win ? APPS[win.app].name : '';

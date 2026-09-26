@@ -20,6 +20,10 @@ import { InMemoryRepository, LocalStorageRepository, setRepository } from './mem
 import { resolveMemory } from './memoryResolver';
 import { captureMemorySnapshot, createMemory, migrate, toContextSnapshot } from './memorySerializer';
 import { useMemoryStore } from './memoryStore';
+import { openApplications } from '../testing/openApplications';
+
+// Phase 12: NOVA starts with no windows; these checks need NOVA's applications open.
+openApplications();
 
 /**
  * Phase 5 verification.

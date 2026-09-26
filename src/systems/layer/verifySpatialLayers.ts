@@ -6,6 +6,10 @@ import { presentWindow } from '../window/windowPresentation';
 import { buildGeminiContext } from '../context/contextGraph';
 import { getCurrentContext } from '../context/contextEngine';
 import type { SpatialWindow } from '../../types/window';
+import { openApplications } from '../testing/openApplications';
+
+// Phase 12: NOVA starts with no windows; these checks need NOVA's applications open.
+openApplications();
 
 let checks = 0;
 let failures = 0;

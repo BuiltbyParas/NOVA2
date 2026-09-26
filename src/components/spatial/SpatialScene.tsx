@@ -1,3 +1,4 @@
+import { PortalDriver } from './PortalDriver';
 import { useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { NoToneMapping } from 'three';
@@ -9,6 +10,8 @@ import { SpatialWindowView } from '../windows/SpatialWindowView';
 import { NovaCore } from '../core/NovaCore';
 import { CameraRig } from './CameraRig';
 import { EnvironmentRig } from './EnvironmentRig';
+import { SpatialCore } from './SpatialCore';
+import { AmbientField } from './AmbientField';
 import { InteractionDriver } from './InteractionDriver';
 import { PerformanceGovernor } from './PerformanceGovernor';
 import { LayerTransitionGovernor } from './LayerTransitionGovernor';
@@ -58,8 +61,11 @@ export function SpatialScene() {
         }}
       >
         <EnvironmentRig />
+        <SpatialCore />
+        <AmbientField />
         <CameraRig />
         <NovaCore />
+        <PortalDriver />
         <WindowLayer />
         <InteractionDriver />
         <PerformanceGovernor />

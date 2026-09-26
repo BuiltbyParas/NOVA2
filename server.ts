@@ -9,11 +9,29 @@ import {
   launchApplication,
   launchableApplications,
 } from './native/linuxLauncher';
+import {
+  INTELLIGENCE_SYSTEM_INSTRUCTION,
+  composeModelInput,
+  parseModelReply,
+  sanitizeRequest,
+  type IntelligenceErrorCode,
+} from './src/systems/intelligence/protocol';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const PORT = 3000;
+
+/**
+ * Where the server listens.
+ *
+ * Loopback by default. NOVA's server can launch installed applications on this
+ * computer and holds the Gemini key, so nothing else on the network should be
+ * able to reach it unless someone chooses that. Set `NOVA_HOST=0.0.0.0` to
+ * listen on every interface — for a container, or to open NOVA from another
+ * device on a trusted network.
+ */
+const HOST = process.env.NOVA_HOST?.trim() || '127.0.0.1';
 
 // Lazy initialization of GoogleGenAI
 let aiClient: GoogleGenAI | null = null;
@@ -676,6 +694,96 @@ async function startServer() {
     }
   });
 
+  /**
+   * NOVA Intelligence (Phase 10): one conversational turn.
+   *
+   * Separate from `/api/gemini/command` on purpose. That endpoint turns a
+   * sentence into spatial intent and is unchanged; this one holds a
+   * conversation. Its only output is a reply to show and, for an action, one
+   * NOVA instruction *sentence* — which the browser hands to `routeUtterance`,
+   * the same pipeline typed words take. Nothing here executes anything, and the
+   * key never leaves this process.
+   *
+   * Every failure answers `{ error: <code> }` with a status that says what
+   * happened, and the model's raw text and error details stay in this log.
+   */
+  const INTELLIGENCE_MODELS = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite'];
+  const INTELLIGENCE_RATE = { windowMs: 60_000, max: 30 };
+  let intelligenceWindow = { start: Date.now(), count: 0 };
+
+  app.post('/api/intelligence/turn', async (req: Request, res: Response) => {
+    const fail = (status: number, error: IntelligenceErrorCode) => {
+      res.status(status).json({ error });
+    };
+
+    const now = Date.now();
+    if (now - intelligenceWindow.start > INTELLIGENCE_RATE.windowMs) {
+      intelligenceWindow = { start: now, count: 0 };
+    }
+    if (++intelligenceWindow.count > INTELLIGENCE_RATE.max) {
+      fail(429, 'rate_limited');
+      return;
+    }
+
+    const request = sanitizeRequest(req.body);
+    if (!request) {
+      fail(400, 'invalid_request');
+      return;
+    }
+
+    const client = getAiClient();
+    if (!client) {
+      console.log('[NOVA Intelligence] GEMINI_API_KEY not configured');
+      fail(503, 'unavailable');
+      return;
+    }
+
+    // Gemini's demand spikes are short and per-model, so NOVA tries each model,
+    // then — if every one was busy — once more after a pause, always within a
+    // budget that ends before the browser stops waiting (20 s).
+    const deadline = Date.now() + 16_000;
+    const attempts = [...INTELLIGENCE_MODELS, ...INTELLIGENCE_MODELS];
+    let rateLimited = false;
+    for (const [index, model] of attempts.entries()) {
+      if (Date.now() > deadline) break;
+      if (index === INTELLIGENCE_MODELS.length) await new Promise((resolve) => setTimeout(resolve, 800));
+      try {
+        const response = await client.models.generateContent({
+          model,
+          contents: composeModelInput(request),
+          config: {
+            systemInstruction: INTELLIGENCE_SYSTEM_INSTRUCTION,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                mode: { type: Type.STRING, enum: ['conversation', 'action', 'clarification', 'refusal'] },
+                reply: { type: Type.STRING },
+                command: { type: Type.STRING },
+              },
+              required: ['mode', 'reply'],
+            },
+          },
+        });
+        const parsed = parseModelReply(response?.text ?? '');
+        if ('error' in parsed) {
+          console.warn(`[NOVA Intelligence] ${model} answered unusably (${parsed.error})`);
+          fail(502, parsed.error);
+          return;
+        }
+        console.log(`[NOVA Intelligence] ${model} → ${parsed.mode}`);
+        res.json(parsed);
+        return;
+      } catch (error: any) {
+        const status = error?.status ?? error?.code;
+        if (status === 429) rateLimited = true;
+        console.warn(`[NOVA Intelligence] ${model} failed (${status ?? 'error'}): ${String(error?.message ?? error).slice(0, 160)}`);
+        // Try the next model.
+      }
+    }
+    fail(rateLimited ? 429 : 503, rateLimited ? 'rate_limited' : 'unavailable');
+  });
+
   // Vite middleware for development vs static build in production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -691,8 +799,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`NOVA server running on port ${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`NOVA server running on http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT} (listening on ${HOST})`);
 
     // Take the first native reading now, while nothing else is competing for
     // the event loop. Fire-and-forget: a failure here is reported to the client

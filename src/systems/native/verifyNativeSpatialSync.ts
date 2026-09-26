@@ -12,6 +12,10 @@ import {
   synchronise,
 } from './nativeSpatialSync';
 import { NO_SYSTEM_ADAPTER, setSystemAdapter } from './systemAdapter';
+import { openApplications } from '../testing/openApplications';
+
+// Phase 12: NOVA starts with no windows; these checks need NOVA's applications open.
+openApplications();
 
 /**
  * Phase 10 verification — native ↔ spatial synchronisation.

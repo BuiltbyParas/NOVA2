@@ -4,7 +4,9 @@ import type { WorkspaceId } from '../types/workspace';
 import type { CoreState } from '../types/command';
 import type { SpatialPosition, SpatialRotation } from '../types/spatial';
 import type { TaskId } from '../types/context';
-import { APPS, APP_ORDER } from '../data/apps';
+import type { PortalState } from '../types/portal';
+import { PORTAL_CLOSED, nextPortalState } from '../systems/portal/portalModel';
+import { APPS } from '../data/apps';
 import { WORKSPACES } from '../data/workspaces';
 import { WORKSPACE_TASK } from '../data/tasks';
 import type { LayerDirection, LayerState } from '../types/layer';
@@ -55,6 +57,11 @@ interface SpatialState {
 
   quality: Quality;
   commandOpen: boolean;
+  /**
+   * The NOVA application portal (Phase 12): an intent and when it changed. Its
+   * phases and motion are derived from this by `portalModel`.
+   */
+  portal: PortalState;
   notice: Notice | null;
 
   /**
@@ -95,6 +102,7 @@ interface SpatialState {
   pulseCore: () => void;
   setQuality: (quality: Quality) => void;
   setCommandOpen: (open: boolean) => void;
+  setPortal: (open: boolean) => void;
   notify: (text: string, kind?: NoticeKind) => void;
   setVisionActive: (active: boolean) => void;
   setVisionStatus: (status: 'off' | 'starting' | 'active' | 'error', error?: string | null) => void;
@@ -109,8 +117,6 @@ interface SpatialState {
   setLayerProgress: (progress: number) => void;
   completeLayerTransition: () => void;
 }
-
-const ENTRY_STAGGER_MS = 110;
 
 /**
  * Whether NOVA starts presenting.
@@ -146,21 +152,20 @@ function createWindow(app: AppType, workspace: WorkspaceId, enterDelay = 0): Spa
   };
 }
 
+/**
+ * NOVA starts with no applications open (Phase 12).
+ *
+ * The environment and the NOVA portal are the first screen; applications come
+ * out of the portal when asked for. Until Phase 12 the five spatial windows
+ * were placed here at startup.
+ */
 function initialWindows(): Record<string, SpatialWindow> {
-  const windows: Record<string, SpatialWindow> = {};
-  // Establish from the back of the space forward, so depth reveals itself.
-  const byDepth = [...APP_ORDER].sort(
-    (a, b) => WORKSPACES.home.placements[a].position.z - WORKSPACES.home.placements[b].position.z,
-  );
-  byDepth.forEach((app, index) => {
-    windows[app] = createWindow(app, 'home', index * ENTRY_STAGGER_MS);
-  });
-  return windows;
+  return {};
 }
 
 export const useSpatialStore = create<SpatialState>((set, get) => ({
   windows: initialWindows(),
-  order: [...APP_ORDER],
+  order: [],
   focusedId: null,
 
   workspace: 'home',
@@ -175,6 +180,7 @@ export const useSpatialStore = create<SpatialState>((set, get) => ({
 
   quality: 'high',
   commandOpen: false,
+  portal: PORTAL_CLOSED,
   notice: null,
 
   presentation: PRESENTATION_AT_STARTUP,
@@ -290,7 +296,8 @@ export const useSpatialStore = create<SpatialState>((set, get) => ({
       get().focusWindow(app);
       return app;
     }
-    const created = createWindow(app, get().workspace);
+    // Every application comes out of the NOVA Core (Phase 12).
+    const created = { ...createWindow(app, get().workspace), origin: { ...get().core.position } };
     set((state) => ({
       windows: { ...state.windows, [created.id]: created },
       order: [...state.order.filter((key) => key !== created.id), created.id],
@@ -335,6 +342,11 @@ export const useSpatialStore = create<SpatialState>((set, get) => ({
   setQuality: (quality) => set({ quality }),
 
   setCommandOpen: (commandOpen) => set({ commandOpen }),
+  setPortal: (open) =>
+    set((state) => {
+      const portal = nextPortalState(state.portal, open, performance.now());
+      return portal === state.portal ? state : { portal };
+    }),
 
   notify: (text, kind = 'info') => set({ notice: { text, kind, at: performance.now() } }),
 

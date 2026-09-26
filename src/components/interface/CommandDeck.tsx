@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Code2, FileText, FolderClosed, Globe, TerminalSquare } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import type { AppType } from '../../types/window';
 import type { CommandSource } from '../../types/command';
 import { APPS } from '../../data/apps';
+import { APP_ICONS } from './appIcons';
 import { cursor, interaction } from '../../systems/interaction/interactionSystem';
 import { routeUtterance } from '../../systems/command/intentRouter';
 
@@ -27,13 +26,7 @@ import { routeUtterance } from '../../systems/command/intentRouter';
 
 const DECK_APPS: AppType[] = ['browser', 'terminal', 'files', 'code', 'notes'];
 
-const DECK_ICONS: Record<AppType, LucideIcon> = {
-  browser: Globe,
-  terminal: TerminalSquare,
-  files: FolderClosed,
-  code: Code2,
-  notes: FileText,
-};
+const DECK_ICONS = APP_ICONS;
 
 /** Radius of the arc, and the sweep it occupies, in px and degrees. */
 const ARC_RADIUS = 128;
@@ -184,7 +177,7 @@ export function CommandDeck() {
       const app = highlightRef.current;
       if (!app) return;
       select(app, 'gesture');
-    });
+    }, 'deck');
   }, [open, select]);
 
   /** Escape closes the deck, and nothing else about the keyboard changes. */

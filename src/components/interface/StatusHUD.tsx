@@ -5,6 +5,7 @@ import { useVoiceStore } from '../../systems/voice/voiceStore';
 import { useNativeStore } from '../../systems/native/nativeStore';
 import { probeIntelligence } from '../../systems/command/intentRouter';
 import { dispatch } from '../../systems/command/commandBus';
+import { toggleIntelligence } from '../../systems/intelligence/intelligenceSession';
 import { useHandPresence } from '../../vision/useHandPresence';
 
 /**
@@ -275,7 +276,13 @@ export function StatusHUD() {
           tone={native[1]}
           title={snapshot.notes[0]}
         />
-        <Row label="AI" value={ai[0]} tone={ai[1]} />
+        <Row
+          label="AI"
+          value={ai[0]}
+          tone={ai[1]}
+          onClick={toggleIntelligence}
+          title="Talk to NOVA (I)"
+        />
       </div>
 
       <NativeApplications />

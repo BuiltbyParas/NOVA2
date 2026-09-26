@@ -276,3 +276,56 @@ Phase 9–9.5B documentation was written later, in NOVA2's own commit `425e82e`,
 73 files of the third-party `ui-ux-pro-max` design skill (tracked by `skills-lock.json`), added in
 `096e019` as housekeeping. They are tooling for the assistant that built NOVA, not part of the application,
 and no phase introduced them.
+
+## Developed in NOVA2 (Phases 10 and 11)
+
+These phases were built after the snapshot, so their history is this
+repository's rather than `BuiltbyParas/NOVA`'s.
+
+| File | Introduced | Also changed in |
+| --- | --- | --- |
+| `src/systems/intelligence/protocol.ts` | Phase 10 | — |
+| `src/systems/intelligence/intelligenceContext.ts` | Phase 10 | — |
+| `src/systems/intelligence/intelligenceSession.ts` | Phase 10 | — |
+| `src/systems/intelligence/verifyIntelligence.ts` | Phase 10 | — |
+| `src/components/interface/IntelligenceSurface.tsx` | Phase 10 | — |
+| `src/systems/environment/ambience.ts` | Phase 11 | Phase 11B (modes, pulses) |
+| `src/systems/environment/verifyEnvironment.ts` | Phase 11 | — |
+| `src/components/spatial/environmentShaders.ts` | Phase 11 | Phase 11B (recomposed around the Spatial Core), Phase 11C (relit as a dark room), Phase 11D (the colour field, the mid layer), Phase 11E (relit as a room lit by meaningful light) |
+| `src/components/spatial/SpatialCore.tsx` | Phase 11B | Phase 11C (redrawn as the dot-matrix bloom) |
+| `src/components/spatial/AmbientField.tsx` | Phase 11B | — |
+| ~~`src/components/spatial/SpatialStructures.tsx`~~ | Phase 11B | removed in Phase 11C |
+| `src/components/spatial/spatialCoreState.ts` | Phase 11B | Phase 11D (`spatialCoreLight`) |
+| `src/components/interface/SpatialCoreLabel.tsx` | Phase 11B | — |
+| `src/systems/environment/ambientField.ts` | Phase 11B | — |
+| `src/components/spatial/SpatialScene.tsx` | Phase 1 | … Phase 11B (mounts the Core and ambient field) |
+| `server.ts` | Phase 3 | … Phase 10 (intelligence endpoint, loopback binding) |
+| `src/components/spatial/EnvironmentRig.tsx` | Phase 1 | … Phase 11 (rewritten as shaders) |
+| `src/data/environment.ts` | Phase 1 | … Phase 11 (`PALETTE`, room geometry) |
+| `src/components/core/NovaCore.tsx` | Phase 1 | … Phase 11 (reads ambient signals) |
+| `src/utils/textures.ts` | Phase 1 | … Phase 11 (room textures removed) |
+| `src/components/interface/CommandLine.tsx` | Phase 1 | … Phase 10 (voice to the conversation) |
+| `src/components/interface/StatusHUD.tsx` | 9.5B presentation | … Phase 10 (AI row opens the surface) |
+| `src/components/interface/SystemLayer.tsx` | Phase 1 | … Phase 10 (mounts the surface), Phase 11B (mounts the Core caption) |
+| `src/systems/input/keyboardCommands.ts` | Phase 1 | … Phase 10 (`I` key) |
+| `src/index.css` | Phase 1 | … Phase 10, Phase 11, Phase 11B, Phase 11C (dark environment, `--env-*` tokens) |
+| `package.json` | Phase 1 | … Phase 10, Phase 11 (test scripts) |
+| `.env.example` | Phase 3 | … Phase 10 (`NOVA_HOST`) |
+
+## Phase 12 (uncommitted)
+
+| File | Introduced | Also changed in |
+| --- | --- | --- |
+| `src/types/portal.ts` | Phase 12 | — |
+| `src/systems/portal/portalModel.ts` | Phase 12 | — |
+| `src/systems/portal/portal.ts` | Phase 12 | — |
+| `src/systems/portal/portalScreen.ts` | Phase 12 | — |
+| `src/systems/portal/verifyPortal.ts` | Phase 12 | — |
+| `src/systems/testing/openApplications.ts` | Phase 12 | — |
+| `src/components/spatial/PortalDriver.tsx` | Phase 12 | — |
+| `src/components/interface/PortalLayer.tsx` | Phase 12 | — |
+| `src/components/interface/appIcons.ts` | Phase 12 (from `CommandDeck.tsx`) | — |
+| `src/state/spatialStore.ts` | Phase 1 | … Phase 12 (portal slice; no startup windows; window origin) |
+| `src/systems/interaction/interactionSystem.ts` | Phase 1 | … Phase 12 (Core → portal; named claims) |
+| `src/components/core/NovaCore.tsx` | Phase 1 | … Phase 12 (portal halo) |
+
