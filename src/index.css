@@ -2499,58 +2499,173 @@ button {
 }
 
 /* ==========================================================================
-   NOVA Intelligence (Phase 10)
-   A conversation drawn as NOVA's glass: the HUD's translucent white, the
-   command line's hairline and shadow, and the accent kept for NOVA itself —
-   its mark, its activity and its outcomes. Nothing here glows or loops except
-   the three dots while NOVA is actually thinking, which say exactly that.
+   NOVA Intelligence (Phase 10; drawn in the room's language in the final
+   Phase 11 refinement).
+
+   Not a chat panel: a field of spatial glass in the right-hand column. Dark,
+   translucent, edged by hairlines; the conversation is lines of text, not
+   bubbles. Violet appears only as NOVA's intelligence — the core glyph, the
+   rule beside what NOVA says, the thinking trace — and cyan only where NOVA
+   acted on the space. States: ready, listening, thinking, responding, acting.
    ========================================================================== */
 
 .intel {
-  /* The right-hand column, beneath the status panel: the conversation stays
-     beside the NOVA Spatial Core rather than on top of it, so NOVA can be seen
-     thinking about what it was asked. */
+  /* The right-hand column, beneath the status panel: clear of the Spatial Core
+     and the portal, so NOVA can be seen thinking about what it was asked. */
+  --intel-violet: 138, 108, 240;
+  --intel-cyan: 127, 216, 230;
+  --intel-pearl: 217, 224, 234;
   position: absolute;
   right: 28px;
   top: 410px;
-  bottom: 48px;
-  width: min(400px, calc(100vw - 56px));
-  min-height: 320px;
+  bottom: 66px;
+  width: min(380px, calc(100vw - 56px));
+  min-height: 300px;
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
-  background: var(--glass-reading);
-  border: 1px solid var(--border);
-  box-shadow:
-    0 1px 2px rgba(20, 22, 26, 0.04),
-    0 14px 34px rgba(20, 22, 26, 0.08),
-    0 40px 90px rgba(20, 22, 26, 0.12);
-  backdrop-filter: blur(20px) saturate(1.3);
-  pointer-events: auto;
   overflow: hidden;
-  z-index: 6;
-  transform-origin: bottom right;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(20, 28, 42, 0.78), rgba(10, 15, 24, 0.84));
+  border: 1px solid rgba(var(--intel-pearl), 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--intel-pearl), 0.08),
+    0 24px 60px rgba(2, 5, 10, 0.45);
+  backdrop-filter: blur(14px) saturate(1.1);
+  color: var(--env-text);
+  pointer-events: auto;
+  transition:
+    border-color 600ms var(--ease-spatial),
+    box-shadow 600ms var(--ease-spatial),
+    opacity 420ms var(--ease-spatial);
 }
 
+/* While the NOVA portal is open, the conversation steps back out of its way. */
+.intel[data-portal] {
+  opacity: 0.12 !important;
+  pointer-events: none;
+}
+
+/* A thin architectural edge of light along the top; violet while NOVA thinks. */
+.intel::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--intel-pearl), 0.35), transparent);
+  transition: background 600ms var(--ease-spatial);
+}
+
+.intel[data-state='thinking'] {
+  border-color: rgba(var(--intel-violet), 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--intel-violet), 0.14),
+    0 0 40px rgba(var(--intel-violet), 0.08),
+    0 24px 60px rgba(2, 5, 10, 0.45);
+}
+
+.intel[data-state='thinking']::before {
+  background: linear-gradient(90deg, transparent, rgba(var(--intel-violet), 0.8), transparent);
+  animation: intel-scan 1.8s var(--ease-spatial) infinite;
+}
+
+.intel[data-state='listening'] {
+  border-color: rgba(var(--intel-cyan), 0.2);
+}
+
+/* One pass of light through the field as an answer arrives (responding), or a
+   cyan-violet trace when NOVA carried out an action. Remounted per answer. */
+.intel__pulse {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(var(--intel-violet), 0.1) 50%, transparent 100%);
+  background-size: 100% 40%;
+  background-repeat: no-repeat;
+  opacity: 0;
+  animation: intel-respond 1.1s var(--ease-spatial) 1;
+}
+
+.intel__pulse[data-kind='acting'] {
+  background-image: linear-gradient(180deg, transparent 0%, rgba(var(--intel-cyan), 0.1) 45%, rgba(var(--intel-violet), 0.08) 55%, transparent 100%);
+}
+
+@keyframes intel-respond {
+  0% { opacity: 0; background-position: 0 -40%; }
+  25% { opacity: 1; }
+  100% { opacity: 0; background-position: 0 140%; }
+}
+
+@keyframes intel-scan {
+  0% { opacity: 0.35; transform: scaleX(0.4); }
+  50% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0.35; transform: scaleX(0.4); }
+}
+
+/* --- Header: telemetry, not a title bar ----------------------------------- */
 .intel__head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 13px 12px 12px 16px;
-  border-bottom: 1px solid var(--border-faint);
+  padding: 14px 12px 10px 16px;
+}
+
+/* The core glyph: NOVA's intelligence as a point of light in a ring. */
+.intel__core {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  margin-right: 2px;
+}
+
+.intel__core::after {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(var(--intel-violet), 0.95);
+  box-shadow: 0 0 8px rgba(var(--intel-violet), 0.7);
+}
+
+.intel__core-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--intel-violet), 0.45);
+}
+
+.intel[data-state='thinking'] .intel__core-ring {
+  animation: intel-ring 1.6s var(--ease-spatial) infinite;
+}
+
+.intel[data-state='listening'] .intel__core::after {
+  background: rgba(var(--intel-cyan), 0.95);
+  box-shadow: 0 0 8px rgba(var(--intel-cyan), 0.6);
+}
+
+@keyframes intel-ring {
+  0% { transform: scale(0.8); opacity: 0.9; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+.intel__mark,
+.intel__title {
+  font: 600 10px/1 var(--font-sans);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 
 .intel__mark {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  color: var(--text);
+  color: var(--env-text);
 }
 
 .intel__title {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
+  color: var(--env-text-tertiary);
+  font-weight: 500;
 }
 
 .intel__state {
@@ -2558,125 +2673,148 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font: 500 9.5px/1 var(--font-mono);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--env-text-tertiary);
 }
 
 .intel__dot {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: var(--signal-ok);
+  background: rgba(var(--intel-pearl), 0.6);
 }
 
-.intel__state[data-state='thinking'] .intel__dot,
+.intel__state[data-state='thinking'] {
+  color: rgba(var(--intel-violet), 0.95);
+}
+
+.intel__state[data-state='thinking'] .intel__dot {
+  background: rgba(var(--intel-violet), 1);
+  box-shadow: 0 0 6px rgba(var(--intel-violet), 0.8);
+}
+
+.intel__state[data-state='listening'] {
+  color: rgba(var(--intel-cyan), 0.95);
+}
+
 .intel__state[data-state='listening'] .intel__dot {
-  background: var(--accent);
+  background: rgba(var(--intel-cyan), 1);
 }
 
 .intel__state[data-state='offline'] .intel__dot {
   background: var(--signal-warn);
 }
 
-.intel__icon {
-  display: inline-grid;
+.nova-interface .intel__icon {
+  display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background 160ms var(--ease-spatial), color 160ms var(--ease-spatial);
+  color: var(--env-text-tertiary);
+  transition: color 160ms var(--ease-spatial), background 160ms var(--ease-spatial);
 }
 
-.intel__icon:hover:not(:disabled) {
-  background: var(--surface-secondary);
-  color: var(--text);
+.nova-interface .intel__icon:hover:not(:disabled) {
+  color: var(--env-text);
+  background: rgba(var(--intel-pearl), 0.06);
 }
 
-.intel__icon:disabled {
-  opacity: 0.35;
-  cursor: default;
+.nova-interface .intel__icon:disabled {
+  opacity: 0.3;
 }
 
+/* The stem: a hairline from the core glyph into the field, as in a diagram. */
+.intel__stem {
+  display: block;
+  height: 1px;
+  margin: 0 16px;
+  background: linear-gradient(90deg, rgba(var(--intel-violet), 0.35), rgba(var(--intel-pearl), 0.08) 40%, transparent);
+}
+
+/* --- The field ------------------------------------------------------------ */
 .intel__log {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 16px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  padding: 14px 18px 10px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+  scrollbar-color: rgba(var(--intel-pearl), 0.14) transparent;
+  mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 10px), transparent 100%);
 }
 
 .intel__empty {
-  margin: auto 0 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 6px 0 0;
 }
 
 .intel__lead {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text);
+  margin: 0 0 6px;
+  font: 400 15px/1.45 var(--font-sans);
+  color: var(--env-text);
+  letter-spacing: 0.005em;
 }
 
 .intel__sub {
-  margin: 0 0 8px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  margin: 0 0 14px;
+  font: 400 12px/1.55 var(--font-sans);
+  color: var(--env-text-tertiary);
 }
 
 .intel__msg {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  max-width: 100%;
+  margin: 0 0 14px;
 }
 
-.intel__msg[data-role='user'] {
-  align-self: flex-end;
-  max-width: 84%;
-}
-
+/* What you said: a quiet line, marked by a chevron — context, not a bubble. */
 .intel__msg[data-role='user'] .intel__text {
-  padding: 8px 12px;
-  border-radius: 12px 12px 4px 12px;
-  background: var(--surface-secondary);
-  color: var(--text);
+  position: relative;
+  padding-left: 14px;
+  font: 400 12.5px/1.5 var(--font-sans);
+  color: var(--env-text-secondary);
 }
 
-/* NOVA speaks without a bubble: a thin accent rule marks the voice, the way the
-   accent marks focus on a window. An answer that failed takes the warning tone
-   instead, so it is never mistaken for a normal reply. */
+.intel__msg[data-role='user'] .intel__text::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--env-text-tertiary);
+}
+
+/* What NOVA said: the field's main text, with a thin violet rule beside it. */
 .intel__msg[data-role='nova'] .intel__text {
-  padding-left: 11px;
-  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  color: var(--text);
+  position: relative;
+  padding-left: 14px;
+  font: 400 13.5px/1.6 var(--font-sans);
+  color: var(--env-text);
+}
+
+.intel__msg[data-role='nova'] .intel__text::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(var(--intel-violet), 0.7), rgba(var(--intel-violet), 0.1));
 }
 
 .intel__msg[data-mode='error'] .intel__text {
-  border-left-color: color-mix(in srgb, var(--signal-warn) 70%, transparent);
-  color: var(--text-secondary);
+  color: var(--env-text-secondary);
+}
+
+.intel__msg[data-mode='error'] .intel__text::before {
+  background: rgba(198, 139, 23, 0.6);
 }
 
 .intel__text {
-  font-size: 13.5px;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
+  word-wrap: break-word;
 }
 
 .intel__para {
   margin: 0;
-  white-space: pre-wrap;
 }
 
 .intel__para + .intel__para,
@@ -2687,41 +2825,52 @@ button {
 
 .intel__list {
   margin: 0;
-  padding-left: 18px;
+  padding-left: 14px;
 }
 
 .intel__list li + li {
   margin-top: 3px;
 }
 
+.intel__list li::marker {
+  color: rgba(var(--intel-violet), 0.7);
+}
+
+/* An action NOVA carried out: telemetry, in the command's own words. */
 .intel__action {
-  align-self: flex-start;
-  margin-left: 13px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 11px;
+  gap: 10px;
+  margin: 8px 0 0 14px;
+  padding: 6px 0 0;
+  border-top: 1px solid rgba(var(--intel-cyan), 0.14);
+  font: 500 10.5px/1.3 var(--font-mono);
+  letter-spacing: 0.04em;
 }
 
 .intel__action-command {
-  font-family: var(--font-mono);
-  color: var(--text);
+  color: rgba(var(--intel-cyan), 0.9);
+}
+
+.intel__action-command::before {
+  content: '→ ';
+  color: rgba(var(--intel-cyan), 0.55);
 }
 
 .intel__action-outcome {
-  color: var(--signal-ok);
+  margin-left: auto;
+  color: var(--env-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 9px;
 }
 
 .intel__action[data-outcome='question'] .intel__action-outcome {
-  color: var(--signal-warn);
+  color: rgba(var(--intel-violet), 0.9);
 }
 
 .intel__action[data-outcome='unresolved'] .intel__action-outcome {
-  color: var(--signal-bad);
+  color: var(--signal-warn);
 }
 
 .intel__chips {
@@ -2731,40 +2880,40 @@ button {
 }
 
 .intel__msg .intel__chips {
-  margin-left: 13px;
+  margin: 8px 0 0 14px;
 }
 
-.intel__chip {
-  padding: 6px 11px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font: inherit;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
+.nova-interface .intel__chip {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(var(--intel-pearl), 0.12);
+  background: rgba(var(--intel-pearl), 0.03);
+  color: var(--env-text-secondary);
+  font: 400 11.5px/1.2 var(--font-sans);
   transition: border-color 160ms var(--ease-spatial), color 160ms var(--ease-spatial);
 }
 
-.intel__chip:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  color: var(--text);
+.nova-interface .intel__chip:hover {
+  border-color: rgba(var(--intel-violet), 0.45);
+  color: var(--env-text);
 }
 
+/* Thinking: a violet trace across the field, not bouncing dots. */
 .intel__thinking {
-  display: inline-flex;
-  gap: 4px;
-  padding: 6px 0 2px 13px;
-  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  height: 16px;
+  margin: 2px 0 12px 14px;
 }
 
 .intel__thinking span {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
+  width: 14px;
+  height: 1px;
+  background: rgba(var(--intel-violet), 0.9);
+  box-shadow: 0 0 6px rgba(var(--intel-violet), 0.6);
   opacity: 0.25;
-  animation: intel-thinking 1.2s var(--ease-spatial) infinite;
+  animation: intel-trace 1.2s var(--ease-spatial) infinite;
 }
 
 .intel__thinking span:nth-child(2) {
@@ -2775,72 +2924,67 @@ button {
   animation-delay: 0.32s;
 }
 
-@keyframes intel-thinking {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  40% {
-    opacity: 0.9;
-  }
+@keyframes intel-trace {
+  0%, 100% { opacity: 0.2; transform: scaleX(0.5); }
+  50% { opacity: 1; transform: scaleX(1); }
 }
 
+/* --- The input: a line in the field, not a box ------------------------------ */
 .intel__field {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin: 8px 12px 12px;
-  padding: 0 6px 0 14px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  transition: border-color 180ms var(--ease-spatial), box-shadow 180ms var(--ease-spatial);
+  gap: 6px;
+  margin: 0 12px 12px 16px;
+  padding: 8px 0 6px;
+  border-top: 1px solid rgba(var(--intel-pearl), 0.1);
+  transition: border-color 200ms var(--ease-spatial);
 }
 
 .intel__field:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-top-color: rgba(var(--intel-violet), 0.45);
 }
 
 .intel__field[data-listening] {
-  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+  border-top-color: rgba(var(--intel-cyan), 0.5);
 }
 
-.intel__input {
+.nova-interface .intel__input {
   flex: 1;
   min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  font: inherit;
-  font-size: 13.5px;
-  color: var(--text);
+  color: var(--env-text);
+  font: 400 13px/1.4 var(--font-sans);
+  caret-color: rgba(var(--intel-violet), 1);
 }
 
 .intel__input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--env-text-tertiary);
 }
 
-.intel__mic[aria-pressed='true'] {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+.nova-interface .intel__mic[aria-pressed='true'] {
+  color: rgba(var(--intel-cyan), 1);
+  background: rgba(var(--intel-cyan), 0.1);
 }
 
-.intel__send {
-  display: inline-grid;
+.nova-interface .intel__send {
+  display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--accent);
-  color: #fff;
-  cursor: pointer;
-  transition: opacity 160ms var(--ease-spatial);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--intel-violet), 0.5);
+  background: rgba(var(--intel-violet), 0.14);
+  color: #efeaff;
+  transition: background 160ms var(--ease-spatial), opacity 160ms var(--ease-spatial);
 }
 
-.intel__send:disabled {
+.nova-interface .intel__send:hover:not(:disabled) {
+  background: rgba(var(--intel-violet), 0.28);
+}
+
+.nova-interface .intel__send:disabled {
   opacity: 0.25;
   cursor: default;
 }
@@ -2853,8 +2997,13 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .intel__thinking span {
+  .intel__thinking span,
+  .intel[data-state='thinking']::before,
+  .intel[data-state='thinking'] .intel__core-ring,
+  .intel__pulse {
     animation: none;
+  }
+  .intel__thinking span {
     opacity: 0.6;
   }
 }

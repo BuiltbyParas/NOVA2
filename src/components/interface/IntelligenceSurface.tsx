@@ -3,6 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp, Mic, RotateCcw, X } from 'lucide-react';
 import { dispatch } from '../../systems/command/commandBus';
 import { useVoiceStore } from '../../systems/voice/voiceStore';
+import { interaction } from '../../systems/interaction/interactionSystem';
+import { useSpatialStore } from '../../state/spatialStore';
+import { prefersReducedMotion } from '../../systems/environment/ambience';
 import {
   converse,
   setIntelligenceOpen,
@@ -22,6 +25,12 @@ import {
  * one. Voice is the existing microphone — the button dispatches the same
  * `voice-input` command the S key does, and while this surface is open a spoken
  * sentence is answered here rather than in the command line.
+ *
+ * Since the final Phase 11 refinement it is drawn in the room's own language —
+ * dark spatial glass, hairline edges, violet only as NOVA's intelligence — and
+ * the conversation is a field of lines rather than chat bubbles. Its states
+ * (ready, listening, thinking, responding, acting) are presentation only,
+ * derived from the session it already reads.
  *
  * A screen-space panel rather than a sixth spatial window, deliberately: a
  * spatial window is an `AppType`, and widening that would reach into every
@@ -103,11 +112,36 @@ export function IntelligenceSurface() {
   const lastFailure = useIntelligenceStore((state) => state.lastFailure);
   const reset = useIntelligenceStore((state) => state.reset);
   const voiceState = useVoiceStore((state) => state.state);
+  // While the portal is open the surface steps back, so the applications are clear.
+  const portalOpen = useSpatialStore((state) => state.portal.open);
   const interim = useVoiceStore((state) => state.interimTranscript);
 
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useRef<HTMLElement>(null);
+
+  // Depth: the surface drifts a few pixels against the pointer, like the room
+  // behind it. One transform per frame through a ref; still under reduced motion.
+  useEffect(() => {
+    if (!open) return;
+    let frame = 0;
+    let x = 0;
+    let y = 0;
+    const tick = () => {
+      frame = requestAnimationFrame(tick);
+      const element = surfaceRef.current;
+      if (!element) return;
+      const still = prefersReducedMotion() || !interaction.pointerPresent;
+      const tx = still ? 0 : -interaction.pointer.x * 5;
+      const ty = still ? 0 : interaction.pointer.y * 3;
+      x += (tx - x) * 0.08;
+      y += (ty - y) * 0.08;
+      element.style.translate = `${x.toFixed(2)}px ${y.toFixed(2)}px`;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
 
   const listening = voiceState === 'starting' || voiceState === 'listening';
   const thinking = status === 'thinking' || voiceState === 'processing';
@@ -135,11 +169,20 @@ export function IntelligenceSurface() {
   const state = listening ? 'listening' : thinking ? 'thinking' : lastFailure ? 'offline' : 'ready';
   const stateLabel = { listening: 'Listening', thinking: 'Thinking', offline: 'Limited', ready: 'Ready' }[state];
 
+  // The newest NOVA line: when it arrives, the field answers once — a light
+  // passing through it (responding), or a trace along it when NOVA acted.
+  const newest = messages.at(-1);
+  const answer = newest && newest.role !== 'user' ? newest : null;
+  const answerKind = answer?.action ? 'acting' : 'responding';
+
   return (
     <AnimatePresence>
       {open && (
         <motion.section
+          ref={surfaceRef}
           className="intel"
+          data-state={state}
+          data-portal={portalOpen || undefined}
           role="dialog"
           aria-label="NOVA Intelligence"
           initial={{ opacity: 0, y: 14, scale: 0.985, filter: 'blur(6px)' }}
@@ -147,7 +190,11 @@ export function IntelligenceSurface() {
           exit={{ opacity: 0, y: 10, scale: 0.99, filter: 'blur(6px)' }}
           transition={{ duration: 0.28, ease: [0.22, 0.9, 0.24, 1] }}
         >
+          {answer && <span key={answer.id} className="intel__pulse" data-kind={answerKind} aria-hidden />}
           <header className="intel__head">
+            <span className="intel__core" aria-hidden>
+              <span className="intel__core-ring" />
+            </span>
             <span className="intel__mark">NOVA</span>
             <span className="intel__title">Intelligence</span>
             <span className="intel__state" data-state={state}>
@@ -175,6 +222,7 @@ export function IntelligenceSurface() {
             </button>
           </header>
 
+          <span className="intel__stem" aria-hidden />
           <div className="intel__log" ref={logRef} aria-live="polite">
             {messages.length === 0 ? (
               <div className="intel__empty">
